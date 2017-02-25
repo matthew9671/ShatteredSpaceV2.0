@@ -455,6 +455,7 @@ public static class game_t
             execute_step();
             board.print_board();
         }
+	board.turn_update();
     }
 } 
 
@@ -641,6 +642,17 @@ public class board_t
         this.check_collisions();
         this.empty_remove_list();
     }
+    
+    public void turn_update()
+    // Update the board and all the objects in it
+    // Call end_turn on all objects on the board
+    {
+        // Update all objects
+        foreach (object_t obj in this.objects)
+        {
+            obj.end_turn(this);
+        }
+    }
 
     void empty_remove_list()
     // Empty toRemove and remove every object in it from the board
@@ -824,7 +836,7 @@ public class object_t
     public string name;
     public bool solid;
     public int step_life;
-    int turn_life;
+    public int turn_life;
     // Position is too important to be public
     Vector2 position;
 
@@ -838,7 +850,7 @@ public class object_t
     // Triggered when some other object collides with it 
     // (One of the two has to be solid). This may lead to inefficiency.
 
-    public void step_update(board_t board)
+    public virtual void step_update(board_t board)
     // Update the object by one timestep.
     {
         this.step_life -= 1;
@@ -851,8 +863,9 @@ public class object_t
         }
     }
 
-    public void end_turn(){}
-    // Decrement the life of the object. Remove object when life goes to 0.
+    public virtual void end_turn(board_t board){}
+    // Decrement the turn_life of the object. 
+    // Remove object when turn_life goes to 0.
 
     public Vector2 get_pos()
     // The only way to access the position of an object
