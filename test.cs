@@ -30,6 +30,7 @@ public class SSTest
         yueTest.test_orbit_missile();
         ruoyuanTest.test_plasma_cutter();
         wenzeTest.test_shock_cannon();
+        luTest.test_cluster_bomb();
         Console.WriteLine("...Passed!");
     }
 
