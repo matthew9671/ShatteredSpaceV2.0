@@ -924,13 +924,18 @@ public class unit_t : object_t
         return take_damage(amount);
     }
 
-    bool take_damage(int amount)
+    public bool take_damage(int amount)
     // Take damage specified by amount. 
     // Returns false if the unit is destroyed.
     {
         SS.dbg_log(this.name + " takes " + amount.ToString() + " damage!");
         this.hp -= amount;
         return this.hp > 0;
+    }
+
+    public int get_hp()
+    {
+        return hp;
     }
 }
 
