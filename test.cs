@@ -15,8 +15,8 @@ public class SSTest
         test_vector2();
         test_board();
         test_build_weapons();
-        test_movement();
         test_weapons();
+        test_movement();
     }
 
     static void test_weapons()

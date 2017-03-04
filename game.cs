@@ -18,7 +18,11 @@ public class SS
     public const int FIELD = 3;
     public const int PARTICLE_OVERHEATED = 4;
     public const bool DBG = true;
-    public const bool VERBOSE = false;
+    public const bool VERBOSE = true;
+    // This is the randomized seed for all random events in the game
+    // Created by one client and shared across all clients
+    // So that the outcomes are identical across clients
+    public const int RND_SEED = 42;
     public static readonly Vector2[] DIRECTIONS =
         {new Vector2(1, 0),
          new Vector2(-1, 0),
