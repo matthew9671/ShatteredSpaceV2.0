@@ -8,9 +8,16 @@ using System.Collections.Generic;
 
 public class ruoyuanTest
 {
-    public static void test_plasma_cutter()
-    // Make the two players shoot each other with grenade launchers
+    public static void test_weapons()
     {
+        test_plasma_cutter();
+    }
+
+    public static void test_plasma_cutter()
+    {
+        return;
+        // This is a sample test
+        // Write your own test with this as a template
         List<Stack<action_t>> input = new List<Stack<action_t>>();
         // Generate the action stack for player1
         Stack<action_t> actions = new Stack<action_t>();
@@ -40,7 +47,9 @@ public class ruoyuanTest
     }
 }
 
-// public class plasmaCutter_t : weapon_t
-// {
-
-// }
+public class plasmaCutter_t : weapon_t
+{
+    static int[] modules = {2, 0, 0, 0};
+    public plasmaCutter_t():base(range:5, damage:5, delay:1, modules:modules)
+    {}
+}

@@ -27,10 +27,10 @@ public class SSTest
         test_build_weapons();
         // test_blaster();
         // test_grenade();
-        yueTest.test_orbit_missile();
-        ruoyuanTest.test_plasma_cutter();
-        wenzeTest.test_shock_cannon();
-        luTest.test_cluster_bomb();
+        yueTest.test_weapons();
+        ruoyuanTest.test_weapons();
+        wenzeTest.test_weapons();
+        luTest.test_weapons();
         Console.WriteLine("...Passed!");
     }
 
@@ -40,7 +40,11 @@ public class SSTest
         List<player_t> players = game_t.board.get_players(game_t.PLAYER_CNT);
         foreach(player_t player in players)
         {
-            Debug.Assert(player.build_weapon(new grenadeLauncher_t()));
+            Debug.Assert(player.build_weapon(new grenadeLauncher_t())); // 1
+            Debug.Assert(player.build_weapon(new plasmaCutter_t()));    // 2
+            Debug.Assert(player.build_weapon(new shockCannon_t()));     // 3
+            Debug.Assert(player.build_weapon(new clusterBomb_t()));     // 4
+            //Debug.Assert(player.build_weapon(new oribitMissile()));    // 5
         }
     }
 
