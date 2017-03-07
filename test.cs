@@ -31,6 +31,7 @@ public class SSTest
         ruoyuanTest.test_weapons();
         wenzeTest.test_weapons();
         luTest.test_weapons();
+        ryanTest.test_weapons();
         Console.WriteLine("...Passed!");
     }
 
