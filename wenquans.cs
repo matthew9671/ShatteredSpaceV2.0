@@ -47,9 +47,9 @@ public class wenquanTest
     }
 }
 
-public class doubleAttack_t : weapon_t
+public class doubleAttack_t : attack_t
 {
-	public doubleAttack_t()
+	public doubleAttack_t():base(null)
     {}
 }
 

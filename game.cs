@@ -860,8 +860,8 @@ public class object_t
     public bool exists = true;
     public string name;
     public bool solid;
-    public int step_life;
-    public int turn_life;
+    public int stepLife;
+    public int turnLife;
     // Position is too important to be public
     Vector2 position;
 
@@ -878,8 +878,8 @@ public class object_t
     public virtual void step_update(board_t board)
     // Update the object by one timestep.
     {
-        this.step_life -= 1;
-        if (this.step_life == 0)
+        this.stepLife -= 1;
+        if (this.stepLife == 0)
         {
             // Remove from board
             // Removing the object at once will result in an error
@@ -889,11 +889,11 @@ public class object_t
     }
 
     public virtual void end_turn(board_t board)
-    // Decrement the turn_life of the object. 
-    // Remove object when turn_life goes to 0.
+    // Decrement the turnLife of the object. 
+    // Remove object when turnLife goes to 0.
     {
-        this.turn_life -= 1;
-        if (this.turn_life == 0)
+        this.turnLife -= 1;
+        if (this.turnLife == 0)
         {
             // Remove from board
             // Removing the object at once will result in an error
@@ -1196,7 +1196,7 @@ public class weapon_t
         damage_t dmg = new damage_t();
         dmg.set_params(amount, delay);
         dmg.set_pos(pos);
-        dmg.step_life = 1;
+        dmg.stepLife = 1;
         board.create_damage(dmg);
         return board.is_in_board(pos);
     }
@@ -1246,7 +1246,7 @@ public class grenadeLauncher_t : weapon_t
             blastWave_t dmg = new blastWave_t(dir);
             dmg.set_params(amount, delay);
             dmg.set_pos(pos + dir);
-            dmg.step_life = 1;
+            dmg.stepLife = 1;
             board.create_damage(dmg);
         }
     }
