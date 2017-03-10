@@ -644,7 +644,28 @@ public class board_t
         // So it is necessary that update_damage comes after the update.
         this.update_damage();
         this.check_collisions();
+        this.remove_destroyed();
         this.empty_remove_list();
+    }
+
+    public void remove_destroyed()
+    // Remove all unit_t with hp <= 0
+    // and trigger all their dying effects
+    {
+        foreach (object_t obj in this.objects)
+        {
+            if (obj is unit_t)
+            {
+                // Cast the object into a unit object
+                unit_t unit = obj as unit_t;
+                if (unit.get_hp() <= 0)
+                {
+                    unit.on_destroyed(this);
+                    // Add the unit object to the to remove list
+                    remove_later(unit);
+                }
+            }
+        }
     }
     
     public void turn_update()
@@ -933,7 +954,13 @@ public class unit_t : object_t
         return this.hp > 0;
     }
 
+    public virtual void on_destroyed(board_t board)
+    // Do something when the unit is destroyed
+    // Like deathrattle in Hearthstone
+    {}
+
     public int get_hp()
+    // Get the hit points of the unit object
     {
         return hp;
     }
