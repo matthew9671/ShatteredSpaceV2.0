@@ -888,9 +888,19 @@ public class object_t
         }
     }
 
-    public virtual void end_turn(board_t board){}
+    public virtual void end_turn(board_t board)
     // Decrement the turn_life of the object. 
     // Remove object when turn_life goes to 0.
+    {
+        this.turn_life -= 1;
+        if (this.turn_life == 0)
+        {
+            // Remove from board
+            // Removing the object at once will result in an error
+            // since we are still looping through the list of objects
+            board.remove_later(this);
+        }
+    }
 
     public Vector2 get_pos()
     // The only way to access the position of an object
@@ -945,7 +955,7 @@ public class unit_t : object_t
         return take_damage(amount);
     }
 
-    public bool take_damage(int amount)
+    public virtual bool take_damage(int amount)
     // Take damage specified by amount. 
     // Returns false if the unit is destroyed.
     {
