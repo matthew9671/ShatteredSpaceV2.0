@@ -644,7 +644,28 @@ public class board_t
         // So it is necessary that update_damage comes after the update.
         this.update_damage();
         this.check_collisions();
+        this.remove_destroyed();
         this.empty_remove_list();
+    }
+
+    public void remove_destroyed()
+    // Remove all unit_t with hp <= 0
+    // and trigger all their dying effects
+    {
+        foreach (object_t obj in this.objects)
+        {
+            if (obj is unit_t)
+            {
+                // Cast the object into a unit object
+                unit_t unit = obj as unit_t;
+                if (unit.get_hp() <= 0)
+                {
+                    unit.on_destroyed(this);
+                    // Add the unit object to the to remove list
+                    remove_later(unit);
+                }
+            }
+        }
     }
     
     public void turn_update()
@@ -839,8 +860,8 @@ public class object_t
     public bool exists = true;
     public string name;
     public bool solid;
-    public int step_life;
-    public int turn_life;
+    public int stepLife;
+    public int turnLife;
     // Position is too important to be public
     Vector2 position;
 
@@ -857,8 +878,8 @@ public class object_t
     public virtual void step_update(board_t board)
     // Update the object by one timestep.
     {
-        this.step_life -= 1;
-        if (this.step_life == 0)
+        this.stepLife -= 1;
+        if (this.stepLife == 0)
         {
             // Remove from board
             // Removing the object at once will result in an error
@@ -867,9 +888,19 @@ public class object_t
         }
     }
 
-    public virtual void end_turn(board_t board){}
-    // Decrement the turn_life of the object. 
-    // Remove object when turn_life goes to 0.
+    public virtual void end_turn(board_t board)
+    // Decrement the turnLife of the object. 
+    // Remove object when turnLife goes to 0.
+    {
+        this.turnLife -= 1;
+        if (this.turnLife == 0)
+        {
+            // Remove from board
+            // Removing the object at once will result in an error
+            // since we are still looping through the list of objects
+            board.remove_later(this);
+        }
+    }
 
     public Vector2 get_pos()
     // The only way to access the position of an object
@@ -924,7 +955,7 @@ public class unit_t : object_t
         return take_damage(amount);
     }
 
-    public bool take_damage(int amount)
+    public virtual bool take_damage(int amount)
     // Take damage specified by amount. 
     // Returns false if the unit is destroyed.
     {
@@ -933,7 +964,13 @@ public class unit_t : object_t
         return this.hp > 0;
     }
 
+    public virtual void on_destroyed(board_t board)
+    // Do something when the unit is destroyed
+    // Like deathrattle in Hearthstone
+    {}
+
     public int get_hp()
+    // Get the hit points of the unit object
     {
         return hp;
     }
@@ -1159,7 +1196,7 @@ public class weapon_t
         damage_t dmg = new damage_t();
         dmg.set_params(amount, delay);
         dmg.set_pos(pos);
-        dmg.step_life = 1;
+        dmg.stepLife = 1;
         board.create_damage(dmg);
         return board.is_in_board(pos);
     }
@@ -1209,7 +1246,7 @@ public class grenadeLauncher_t : weapon_t
             blastWave_t dmg = new blastWave_t(dir);
             dmg.set_params(amount, delay);
             dmg.set_pos(pos + dir);
-            dmg.step_life = 1;
+            dmg.stepLife = 1;
             board.create_damage(dmg);
         }
     }

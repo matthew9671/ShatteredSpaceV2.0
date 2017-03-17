@@ -120,8 +120,8 @@ public class shockCannon_t : weapon_t
             shockDamage_t dmg = new shockDamage_t();
             dmg.set_params(0, delay);
             dmg.set_pos(targetPos);
-            dmg.step_life = -1;
-            dmg.turn_life = 1;
+            dmg.stepLife = -1;
+            dmg.turnLife = 1;
             board.create_damage(dmg);
         }
         return true;
