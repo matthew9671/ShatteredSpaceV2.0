@@ -15,7 +15,6 @@ public class wenzeTest
     
     public static void test_shock_cannon()
     {
-        return;
         // This is a sample test
         // Write your own test with this as a template
         List<Stack<action_t>> input = new List<Stack<action_t>>();
@@ -23,25 +22,36 @@ public class wenzeTest
         Stack<action_t> actions = new Stack<action_t>();
         // Generate one action
         // #############################
-        action_t action = new action_t();
+        action_t action;
+        // player 1 attacks
+        action = new action_t();
         action.spMovement = Vector2.zero;
         action.movement = Vector2.zero;
-        action.wpnId = 1;
-        action.attack = new attack_t(new Vector2(-2, 0));
+        action.attack = new dirAttack_t(3);
+        action.wpnId = 3;
         actions.Push(action);
-        // #############################
+        // player 1 moves
+        for (int i = 0; i<5; i++)
+        {
+            action = new action_t();
+            action.spMovement = Vector2.zero;
+            action.movement = new Vector2(-1,0);
+            action.wpnId = -1;
+            actions.Push(action);
+        }
+        // add player 1 actions to input
         input.Add(actions);
         // Generate the action stack for player2
         actions = new Stack<action_t>();
-        // #############################
+        // player 2 does nothing
         action = new action_t();
         action.spMovement = Vector2.zero;
         action.movement = Vector2.zero;
         action.wpnId = -1;
         actions.Push(action);
-        // #############################
+        // add player 2 actions to input
         input.Add(actions);
-        Console.WriteLine("Testing grenade...");
+        Console.WriteLine("Testing Shock Cannon...");
         game_t.execute_turn(input);
         Console.WriteLine("...Passed!");
     }
@@ -50,8 +60,10 @@ public class wenzeTest
 public class dirAttack_t : attack_t
 {
     public int dir;
-    public dirAttack_t():base(null)
-    {}
+    public dirAttack_t(int dir):base(null)
+    {
+        this.dir = dir;
+    }
 }
 
 public class shockDamage_t : damage_t
