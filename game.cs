@@ -481,6 +481,7 @@ public class board_t
     const string turret_symbol = "T";
     const string tile_symbol = ".";
     const string damage_symbol = "*";
+    const string other_symbol = "?";
 
     public board_t(int mapId)
     {
@@ -552,7 +553,7 @@ public class board_t
         {
             foreach(object_t obj in tile)
             {
-                if (obj.solid) return false;
+                if (obj.solid && obj.exists) return false;
             }
             return true;
         }
@@ -833,6 +834,10 @@ public class board_t
                         else if (obj is damage_t)
                         {
                             Console.Write(damage_symbol);
+                        }
+                        else
+                        {
+                            Console.Write(other_symbol);
                         }
                     }
                     else
