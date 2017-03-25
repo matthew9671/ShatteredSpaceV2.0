@@ -24,10 +24,10 @@ public class wenquanTest
         // #############################
         action_t action = new action_t();
         action.spMovement = Vector2.zero;
-        action.movement = Vector2.zero;
+        action.movement = new Vector2(1, 0);
         action.wpnId = 5;
-        action.attack = new doubleAttack_t(new Vector2(0, 0),
-        								   new Vector2(0, 1));
+        action.attack = new doubleAttack_t(new Vector2(4, -3),
+        								   new Vector2(5, 0));
         actions.Push(action);
         // #############################
         input.Add(actions);
@@ -39,8 +39,6 @@ public class wenquanTest
         action.movement = Vector2.zero;
         action.wpnId = -1;
         actions.Push(action);
-        action = new action_t();
-        action.movement = Vector2
         // #############################
         input.Add(actions);
         Console.WriteLine("Testing force barrier...");
@@ -75,7 +73,7 @@ public class barrier_t : unit_t
 	{
 		base.end_turn(board);
 		this.exists = true;
-		if !board.is_free(pos) board.remove_later(this);
+		if (!board.is_free(this.get_pos())) board.remove_later(this);
 	}
 }
 
