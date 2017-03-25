@@ -31,6 +31,7 @@ public class SSTest
         ruoyuanTest.test_weapons();
         wenzeTest.test_weapons();
         luTest.test_weapons();
+        wenquanTest.test_weapons();
         ryanTest.test_weapons();
         Console.WriteLine("...Passed!");
     }
@@ -45,7 +46,8 @@ public class SSTest
             Debug.Assert(player.build_weapon(new plasmaCutter_t()));    // 2
             Debug.Assert(player.build_weapon(new shockCannon_t()));     // 3
             Debug.Assert(player.build_weapon(new clusterBomb_t()));     // 4
-            //Debug.Assert(player.build_weapon(new oribitMissile()));    // 5
+            Debug.Assert(player.build_weapon(new forceBarrier_t()));     // 5
+            //Debug.Assert(player.build_weapon(new oribitMissile()));    // 6
         }
     }
 
