@@ -26,7 +26,7 @@ public class luTest
         action1.spMovement = Vector2.zero;
         action1.movement = Vector2.zero;
         action1.wpnId = 4;
-        action1.attack = new attack_t(new Vector2(-2, 0));
+        action1.attack = new attack_t(new Vector2(2, 2));
         actions.Push(action1);
 
         // #############################
@@ -41,8 +41,41 @@ public class luTest
         // actions.Push(action);
         // #############################
         input.Add(actions);
-        Console.WriteLine("Testing grenade...");
+        Console.WriteLine("Testing cluster bomb...");
         game_t.execute_turn(input);
+
+        input = new List<Stack<action_t>>();
+        // Generate the action stack for player1
+        actions = new Stack<action_t>();
+        // Generate one action
+        // #############################
+        action1 = new action_t();
+        action1.spMovement = Vector2.zero;
+        action1.movement = Vector2.zero;
+        action1.wpnId = -1;
+        actions.Push(action1);
+        action1 = new action_t();
+        action1.spMovement = Vector2.zero;
+        action1.movement = Vector2.zero;
+        action1.wpnId = -1;
+        actions.Push(action1);
+        action1 = new action_t();
+        action1.spMovement = Vector2.zero;
+        action1.movement = Vector2.zero;
+        action1.wpnId = -1;
+        actions.Push(action1);
+        // #############################
+        input.Add(actions);
+        // Generate the action stack for player2
+        actions = new Stack<action_t>();
+        // #############################
+        // action = new action_t();
+        // action.spMovement = Vector2.zero;
+        // action.movement = Vector2.zero;
+        // action.wpnId = -1;
+        // actions.Push(action);
+        // #############################
+        input.Add(actions);
         game_t.execute_turn(input);
         Console.WriteLine("...Passed!");
     }
@@ -81,6 +114,9 @@ public class clusterDamage_t : damage_t
 
     public override void end_turn(board_t board)
     {
+        base.end_turn(board);
+
+        SS.dbg_log("End of turn for clusterBomb!");
         // TODO: Generate 3 small bombs
         Vector2 pos = this.get_pos();
         Vector2[] randDir = Shuffle<Vector2>(SS.DIRECTIONS);
@@ -143,7 +179,8 @@ public class clusterBomb_t : weapon_t
             BOMB_COUNT);
         dmg.set_params(amount, delay);
         dmg.set_pos(pos);
-        dmg.stepLife = 1;
+        dmg.stepLife = -1;
+        dmg.turnLife = 1;
         board.create_damage(dmg);
         return board.is_in_board(pos);
     }

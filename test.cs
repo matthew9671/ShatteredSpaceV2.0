@@ -88,7 +88,7 @@ public class SSTest
         action.wpnId = 1;
         action.target = new Vector2(-2, 0);
         actions.Push(action);
-        input.Add(actions);
+        input.Add(actions); 
         // Generate the action stack for player2
         action = new action_t();
         actions = new Stack<action_t>();
