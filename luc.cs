@@ -121,8 +121,11 @@ public class clusterDamage_t : damage_t
         Vector2 pos = this.get_pos();
         Vector2[] randDir = Shuffle<Vector2>(SS.DIRECTIONS);
         Vector2[] subDamDir = {pos+randDir[0], pos+randDir[1], pos+randDir[2]};
+        SS.dbg_log("random"+subDamDir[0]);
+        SS.dbg_log("random"+subDamDir[1]);
+        SS.dbg_log("random"+subDamDir[2]);
 
-        generate_splash_damage(pos, board, null);
+
         // Generate the damage in the center
 
         int amount = subDamage;
@@ -131,6 +134,23 @@ public class clusterDamage_t : damage_t
         dmg.set_pos(pos);
         dmg.stepLife = 1;
         board.create_damage(dmg);
+        generate_splash_damage(pos, board, null);
+
+        damage_t dmg0 = new damage_t();
+        dmg0.set_params(amount, delay);
+        dmg0.set_pos(subDamDir[0]);
+        dmg0.stepLife = 1;
+        board.create_damage(dmg0);
+        generate_splash_damage(subDamDir[0], board, null);
+
+        damage_t dmg1 = new damage_t();
+        dmg1.set_params(amount, delay);
+        dmg1.set_pos(subDamDir[1]);
+        dmg1.stepLife = 1;
+        board.create_damage(dmg1);
+        generate_splash_damage(subDamDir[1], board, null);
+
+
     }
 
     void generate_splash_damage(Vector2 pos, board_t board, unit_t master)
