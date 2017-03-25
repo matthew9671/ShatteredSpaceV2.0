@@ -15,7 +15,6 @@ public class luTest
 
     public static void test_cluster_bomb()
     {
-        return;
         // This is a sample test
         // Write your own test with this as a template
         List<Stack<action_t>> input = new List<Stack<action_t>>();
@@ -23,25 +22,27 @@ public class luTest
         Stack<action_t> actions = new Stack<action_t>();
         // Generate one action
         // #############################
-        action_t action = new action_t();
-        action.spMovement = Vector2.zero;
-        action.movement = Vector2.zero;
-        action.wpnId = 1;
-        action.attack = new attack_t(new Vector2(-2, 0));
-        actions.Push(action);
+        action_t action1 = new action_t();
+        action1.spMovement = Vector2.zero;
+        action1.movement = Vector2.zero;
+        action1.wpnId = 4;
+        action1.attack = new attack_t(new Vector2(-2, 0));
+        actions.Push(action1);
+
         // #############################
         input.Add(actions);
         // Generate the action stack for player2
         actions = new Stack<action_t>();
         // #############################
-        action = new action_t();
-        action.spMovement = Vector2.zero;
-        action.movement = Vector2.zero;
-        action.wpnId = -1;
-        actions.Push(action);
+        // action = new action_t();
+        // action.spMovement = Vector2.zero;
+        // action.movement = Vector2.zero;
+        // action.wpnId = -1;
+        // actions.Push(action);
         // #############################
         input.Add(actions);
         Console.WriteLine("Testing grenade...");
+        game_t.execute_turn(input);
         game_t.execute_turn(input);
         Console.WriteLine("...Passed!");
     }
@@ -62,12 +63,32 @@ public class clusterDamage_t : damage_t
         this.bombCount = bombCount;
     }
 
+    Random _random = new Random();
+    public T[] Shuffle<T>(T[] array)
+    {
+        var random = _random;
+        for (int i = array.Length; i > 1; i--)
+        {
+            // Pick random element to swap.
+            int j = random.Next(i); // 0 <= j <= i-1
+            // Swap.
+            T tmp = array[j];
+            array[j] = array[i - 1];
+            array[i - 1] = tmp;
+        }
+        return array;
+    }
+
     public override void end_turn(board_t board)
     {
         // TODO: Generate 3 small bombs
         Vector2 pos = this.get_pos();
+        Vector2[] randDir = Shuffle<Vector2>(SS.DIRECTIONS);
+        Vector2[] subDamDir = {pos+randDir[0], pos+randDir[1], pos+randDir[2]};
+
         generate_splash_damage(pos, board, null);
         // Generate the damage in the center
+
         int amount = subDamage;
         damage_t dmg = new damage_t();
         dmg.set_params(amount, delay);
