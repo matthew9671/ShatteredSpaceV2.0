@@ -93,7 +93,7 @@ public class clusterDamage_t : damage_t
         damage_t dmg = new damage_t();
         dmg.set_params(amount, delay);
         dmg.set_pos(pos);
-        dmg.step_life = 1;
+        dmg.stepLife = 1;
         board.create_damage(dmg);
     }
 
@@ -106,7 +106,7 @@ public class clusterDamage_t : damage_t
             damage_t dmg = new damage_t();
             dmg.set_params(amount, delay);
             dmg.set_pos(pos + dir);
-            dmg.step_life = 1;
+            dmg.stepLife = 1;
             board.create_damage(dmg);
         }
     }
@@ -143,7 +143,7 @@ public class clusterBomb_t : weapon_t
             BOMB_COUNT);
         dmg.set_params(amount, delay);
         dmg.set_pos(pos);
-        dmg.step_life = 1;
+        dmg.stepLife = 1;
         board.create_damage(dmg);
         return board.is_in_board(pos);
     }
@@ -158,7 +158,7 @@ public class clusterBomb_t : weapon_t
             blastWave_t dmg = new blastWave_t(dir);
             dmg.set_params(amount, delay);
             dmg.set_pos(pos + dir);
-            dmg.step_life = 1;
+            dmg.stepLife = 1;
             board.create_damage(dmg);
         }
     }
