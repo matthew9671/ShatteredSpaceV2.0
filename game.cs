@@ -63,7 +63,7 @@ public class DumpStackTraceListener : TraceListener
      if (null == message2)
         message2 = String.Empty;
 
-     Console.WriteLine( "{0}: {1}", message1, message2 );
+     Console.WriteLine( "{0}: {1}", message1, message2);
      Console.WriteLine( "Stack Trace:" );
 
      StackTrace trace = new StackTrace( true );
