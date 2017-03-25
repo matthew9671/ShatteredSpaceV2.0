@@ -23,6 +23,15 @@ public class wenzeTest
         // Generate one action
         // #############################
         action_t action;
+        // player 1 moves
+        for (int i = 0; i<5; i++)
+        {
+            action = new action_t();
+            action.spMovement = Vector2.zero;
+            action.movement = new Vector2(1,0);
+            action.wpnId = -1;
+            actions.Push(action);
+        }
         // player 1 attacks
         action = new action_t();
         action.spMovement = Vector2.zero;
@@ -54,6 +63,31 @@ public class wenzeTest
         Console.WriteLine("Testing Shock Cannon...");
         game_t.execute_turn(input);
         Console.WriteLine("...Passed!");
+
+        input = new List<Stack<action_t>>();
+        actions = new Stack<action_t>();
+        for (int i = 0; i<3; i++)
+        {
+            action = new action_t();
+            action.spMovement = Vector2.zero;
+            action.movement = new Vector2(0,-1);
+            action.wpnId = -1;
+            actions.Push(action);
+        }
+        input.Add(actions);
+        actions = new Stack<action_t>();
+        for (int i = 0; i<3; i++)
+        {
+            action = new action_t();
+            action.spMovement = Vector2.zero;
+            action.movement = new Vector2(0,-1);
+            action.wpnId = -1;
+            actions.Push(action);
+        }
+        input.Add(actions);
+        Console.WriteLine("Testing Shock Cannon new round...");
+        game_t.execute_turn(input);
+        Console.WriteLine("...passed!");
     }
 }
 
@@ -70,6 +104,13 @@ public class shockDamage_t : damage_t
 {
 
     player_t player;
+
+    Vector2[] piecePos = {new Vector2(1,0), new Vector2(2,0), new Vector2(1,1),
+                    new Vector2(0,1), new Vector2(0,2), new Vector2(-1,1),
+                    new Vector2(-1,2), new Vector2(-1,0), new Vector2(-2,0),
+                    new Vector2(-2,2), new Vector2(-2,1), new Vector2(-1,-1),
+                    new Vector2(0,-1), new Vector2(0,-2), new Vector2(1,-1),
+                    new Vector2(2,-1), new Vector2(1,-2), new Vector2(2,-2)};
 
     public override void on_collision(object_t other){
         if (other is player_t && player == null)
@@ -88,8 +129,28 @@ public class shockDamage_t : damage_t
     }
 
     public override void end_turn(board_t board){
+        base.end_turn(board);
         if (player != null){
+            int numOfPieces = player.get_hp()/2;
             player.take_damage(player.get_hp()/2);
+
+            //creating pieces of energy that can be picked up by players
+            damage_t piece;
+            int randomPos;
+            Vector2 targetPos;
+            Random rnd = new Random();
+
+            for (int i = 0; i < numOfPieces; i++) {
+                randomPos = rnd.Next(18);
+                Vector2 vec = piecePos[randomPos];
+                targetPos = vec + player.get_pos();
+                piece = new damage_t();
+                piece.set_params(-1, 0);
+                piece.set_pos(targetPos);
+                piece.stepLife = -1;
+                piece.turnLife = -1;
+                board.create_damage(piece);
+            }
         }
     }
 }
@@ -114,6 +175,7 @@ public class shockCannon_t : weapon_t
         int dir = dirAttack.dir;
         Vector2 targetPos;
         int delay = get_delay(master);
+
         for (int i = 0; i < 3; i++){
             Vector2 vec = pos[dir, i];
             targetPos = vec + master.get_pos();
