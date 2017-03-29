@@ -18,7 +18,7 @@ public class SS
     public const int FIELD = 3;
     public const int PARTICLE_OVERHEATED = 4;
     public const bool DBG = true;
-    public const bool VERBOSE = true;
+    public const bool VERBOSE = false;
     // This is the randomized seed for all random events in the game
     // Created by one client and shared across all clients
     // So that the outcomes are identical across clients
@@ -63,7 +63,7 @@ public class DumpStackTraceListener : TraceListener
      if (null == message2)
         message2 = String.Empty;
 
-     Console.WriteLine( "{0}: {1}", message1, message2);
+     Console.WriteLine( "{0}: {1}", message1, message2 );
      Console.WriteLine( "Stack Trace:" );
 
      StackTrace trace = new StackTrace( true );
@@ -182,57 +182,36 @@ public struct action_t
 
 // An abstract instance of a game of shattered space
 public static class game_t
-{
-    public static int PLAYER_CNT = 2;
-    public static board_t board;
-    
-    public static void init_game()
-    // Initialize the game
-    {
-        Console.WriteLine("Ready to go!");
-        board = new board_t(0);
-        // Run tests
-        if (SS.DBG)
-        {
-            #if DEBUG
-                Debug.Listeners.Add( new DumpStackTraceListener() );
-            #endif
-            // test_vector2();
-            // test_board();
-            // // test_weapons();
-            // test_movement();
-        }
-    }
-
+{   
     // Execute one time step at a time until both players run out of actions, 
     // then execute end_turn.
     // The input comes from user input
-    public static void execute_turn(List<Stack<action_t>> actions)
+    public static void execute_turn(board_t board, List<Stack<action_t>> actions)
     {
-        SS.dbg_log("Start of turn!");
-        List<player_t> players = board.get_players(PLAYER_CNT);
-        for (int i = 0; i < PLAYER_CNT; i++)
+        int playerCount = board.playerCount;
+        List<player_t> players = board.get_players();
+        for (int i = 0; i < playerCount; i++)
         {
             players[i].set_actions(actions[i]);
         }
         // Execute the actions one step at a time
-        while(!turn_finished())
+        while(!turn_finished(players))
         {
             SS.dbg_log("Executing step...");
-            execute_step();
+            execute_step(board);
             board.print_board();
         }
         // Do end of turn stuff
-        end_turn();
+        end_turn(board);
     }
     
-    static bool turn_finished()
+    static bool turn_finished(List<player_t> players)
     // Returns true if all players run out of actions
     // and all remaining pending damage has non-positive delay
     {
-        List<player_t> players = board.get_players(PLAYER_CNT);
+        int playerCount = players.Count;
         // Check player actions
-        for (int i = 0; i < PLAYER_CNT; i++)
+        for (int i = 0; i < playerCount; i++)
         {
             if (!players[i].no_moves_left())
             {
@@ -240,23 +219,25 @@ public static class game_t
             }
         }
         // Check pending damage
-        return !board.has_pending_damage();
+        // Or not?
+        return true;
     }
         
-    static List<Vector2>[,] execute_step()
+    static List<Vector2>[,] execute_step(board_t board)
     // Execute one time step of the game.  
     // Pop off an action from each player;
     // all players fire their weapons;
     // move the players and deal with solid collisions recursively. 
     // Calls update board when finished.
     {
-        List<player_t> players = board.get_players(PLAYER_CNT);
-        Vector2[] spvs = new Vector2[PLAYER_CNT];
-        Vector2[] vs = new Vector2[PLAYER_CNT];
-        List<Vector2>[,] result = new List<Vector2>[PLAYER_CNT,2];
+        int playerCount = board.playerCount;
+        List<player_t> players = board.get_players();
+        Vector2[] spvs = new Vector2[playerCount];
+        Vector2[] vs = new Vector2[playerCount];
+        List<Vector2>[,] result = new List<Vector2>[playerCount,2];
         // Calculate special and normal movements separately
         // with the same helper
-        for (int i = 0; i < PLAYER_CNT; i++)
+        for (int i = 0; i < playerCount; i++)
         {
             action_t action = players[i].pop_action();
             spvs[i] = action.spMovement;
@@ -268,10 +249,10 @@ public static class game_t
         }
         // Move the players
         SS.dbg_log("Doing special movement...");
-        List<Vector2>[] spMovements = move_players(players, spvs);
+        List<Vector2>[] spMovements = move_players(board, players, spvs);
         SS.dbg_log("Doing normal movement...");
-        List<Vector2>[] movements = move_players(players, vs);
-        for (int i = 0; i < PLAYER_CNT; i++)
+        List<Vector2>[] movements = move_players(board, players, vs);
+        for (int i = 0; i < playerCount; i++)
         {
             result[i,0] = spMovements[i];
             result[i,1] = movements[i];
@@ -282,19 +263,21 @@ public static class game_t
         return result;
     }
 
-    static List<Vector2>[] move_players(List<player_t> players, Vector2[] vs)
+    static List<Vector2>[] move_players(board_t board,
+        List<player_t> players, Vector2[] vs)
     // Move the players around with vs as their initial velocities
     // This is more complicated than it seems
     // Since we have to take care of collisions in a sensible and fun way
     // For two and potentially more players
     {
-        List<Vector2>[] result = new List<Vector2>[PLAYER_CNT];
+        int playerCount = board.playerCount;
+        List<Vector2>[] result = new List<Vector2>[playerCount];
         // A map from positions on the board to a list of player indices
         Dictionary<Vector2, List<int>> posToPlayer = 
             new Dictionary<Vector2, List<int>>(new vecComp());
         bool isMoving = true;
         // Temporarily remove all players from the board
-        for (int i = 0; i < PLAYER_CNT; i++)
+        for (int i = 0; i < playerCount; i++)
         {
             board.remove_object(players[i]);
         }
@@ -302,7 +285,7 @@ public static class game_t
         {
             posToPlayer.Clear();
             // Add all the velocities to the result
-            for (int i = 0; i < PLAYER_CNT; i++)
+            for (int i = 0; i < playerCount; i++)
             {
                 if (result[i] == null)
                 {
@@ -317,9 +300,9 @@ public static class game_t
                 }
             }
             // First check for special case where two players switch positions
-            for (int i = 0; i < PLAYER_CNT; i++)
+            for (int i = 0; i < playerCount; i++)
             {
-                for (int j = i + 1; j < PLAYER_CNT; j++)
+                for (int j = i + 1; j < playerCount; j++)
                 {
                     Vector2 pos1 = players[i].get_pos();
                     Vector2 pos2 = players[j].get_pos();
@@ -343,7 +326,7 @@ public static class game_t
             // occupying the same tile
             // Since that may generate a infinite loop and 
             // cause the game to crash
-            for (int i = 0; i < PLAYER_CNT; i++)
+            for (int i = 0; i < playerCount; i++)
             {
                 Vector2 pos;
                 pos = players[i].get_pos();
@@ -424,7 +407,7 @@ public static class game_t
             }
             // Check if any one of the players is still moving
             isMoving = false;
-            for(int i = 0; i < PLAYER_CNT; i++)
+            for(int i = 0; i < playerCount; i++)
             {
                 if (vs[i] != Vector2.zero)
                 {
@@ -434,7 +417,7 @@ public static class game_t
             }
         }
         // Put all players back to the board
-        for (int i = 0; i < PLAYER_CNT; i++)
+        for (int i = 0; i < playerCount; i++)
         {
             Vector2 pos = players[i].get_pos();
             Debug.Assert(board.is_free(pos));
@@ -445,22 +428,23 @@ public static class game_t
         
     // Generate all remaining damage, clear the action stacks again 
     // then call end_turn on all objects on the board.
-    static void end_turn()
+    static void end_turn(board_t board)
     {
         if (SS.DBG) Console.WriteLine("End of turn...");
         // First generate all end-of-turn damage
+        board.step_update();
         board.clear_pending_damage();
         board.print_board();
         board.step_update();
         // Attempt to move the players again
         // since there might be blast wave effects that pushes players around
-        while(!turn_finished())
+        while(!turn_finished(board.get_players()))
         {
             //if (SS.DBG) Console.WriteLine("Executing step...");
-            execute_step();
+            execute_step(board);
             board.print_board();
         }
-	board.turn_update();
+	   board.turn_update();
     }
 } 
 
@@ -472,6 +456,7 @@ public class board_t
     int centerRow;
     int centerCol;
     int mapId;
+    public int playerCount;
     List<object_t> objects;
     List<object_t>[,] board;
     // Should use a priority queue but it's too much trouble
@@ -484,8 +469,9 @@ public class board_t
     const string damage_symbol = "*";
     const string other_symbol = "?";
 
-    public board_t(int mapId)
+    public board_t(int mapId, int playerCount)
     {
+        this.playerCount = playerCount;
         this.mapId = mapId;
         this.init();
     }
@@ -526,14 +512,18 @@ public class board_t
             }
         } 
         // Add the players
+        // Hard coding FTW!!!!
         player_t p1 = new player_t();
         Vector2 pos = new Vector2(3, 0);
         p1.playerId = 0;
         put_object(pos, p1);
-        player_t p2 = new player_t();
-        pos = new Vector2(-3, 0);
-        p2.playerId = 1;
-        put_object(pos, p2);
+        if (playerCount == 2)
+        {
+            player_t p2 = new player_t();
+            pos = new Vector2(-3, 0);
+            p2.playerId = 1;
+            put_object(pos, p2);
+        }
     }
 
     public bool is_in_board(Vector2 pos)
@@ -554,7 +544,7 @@ public class board_t
         {
             foreach(object_t obj in tile)
             {
-                if (obj.solid && obj.exists) return false;
+                if (obj.solid) return false;
             }
             return true;
         }
@@ -701,7 +691,7 @@ public class board_t
         foreach(damage_t dmg in pending)
         {
             // It has to be end-of-turn damage
-            Debug.Assert(dmg.delay < 0);
+            //Debug.Assert(dmg.delay < 0);
             // TODO: Later we should add a condition here
             // Specifically to implement the homing missile (or something...)
             if (true){
@@ -780,17 +770,17 @@ public class board_t
         }
     }
 
-    public List<player_t> get_players(int count)
+    public List<player_t> get_players()
     //Returns a list of players ordered by playerId.
     {
         List<object_t> player_objs = objects.FindAll(x => x is player_t);
         List<player_t> players = new List<player_t>();
         // Convert all the "object_t*" to "player_t*"
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < playerCount; i++)
         {
             players.Add(player_objs[i] as player_t);
         }
-        Debug.Assert(players.Count == count);
+        Debug.Assert(players.Count == playerCount);
         // Sort the players by playerId
         players.Sort((x, y) => x.playerId.CompareTo(y.playerId));
         return players;

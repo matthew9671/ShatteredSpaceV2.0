@@ -6,16 +6,17 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Collections.Generic;
 
-public class ryanTest
+public class yueTest
 {
     public static void test_weapons()
     {
-        test_tracking_mine();
+        test_orbit_missile();
     }
 
-    public static void test_tracking_mine()
+    public static void test_orbit_missile()
     {
         return;
+        board_t board = new board_t(0, 2);
         // This is a sample test
         // Write your own test with this as a template
         List<Stack<action_t>> input = new List<Stack<action_t>>();
@@ -42,30 +43,12 @@ public class ryanTest
         // #############################
         input.Add(actions);
         Console.WriteLine("Testing grenade...");
-        game_t.execute_turn(input);
+        game_t.execute_turn(board, input);
         Console.WriteLine("...Passed!");
     }
 }
 
-// ###################################################################
-// Write your weapon class here
-// ###################################################################
-
-// public class trackingMine_t : weapon_t
+// public class orbitMissile_t : weapon_t
 // {
 
-// }
-
-// ###################################################################
-// To build a class in C# you need to have a constructor
-// Here is an example of the simplest weapon class to get you started
-// ###################################################################
-
-// public class blaster_t : weapon_t
-// {
-//     // From left to right, the entries represent 
-//     // number of momentum, explosive, particle and field modules.
-//     static int[] modules = {2, 0, 0, 0};
-//     public blaster_t():base(range:5, damage:5, delay:1, modules:modules)
-//     {}
 // }

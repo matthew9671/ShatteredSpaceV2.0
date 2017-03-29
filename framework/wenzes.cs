@@ -15,6 +15,9 @@ public class wenzeTest
     
     public static void test_shock_cannon()
     {
+        board_t board = new board_t(0, 2);
+        player_t player = board.get_players()[0];
+        player.build_weapon(new shockCannon_t());
         // This is a sample test
         // Write your own test with this as a template
         List<Stack<action_t>> input = new List<Stack<action_t>>();
@@ -37,7 +40,7 @@ public class wenzeTest
         action.spMovement = Vector2.zero;
         action.movement = Vector2.zero;
         action.attack = new dirAttack_t(3);
-        action.wpnId = 3;
+        action.wpnId = 1;
         actions.Push(action);
         // player 1 moves
         for (int i = 0; i<5; i++)
@@ -61,7 +64,7 @@ public class wenzeTest
         // add player 2 actions to input
         input.Add(actions);
         Console.WriteLine("Testing Shock Cannon...");
-        game_t.execute_turn(input);
+        game_t.execute_turn(board, input);
         Console.WriteLine("...Passed!");
 
         input = new List<Stack<action_t>>();
@@ -86,7 +89,7 @@ public class wenzeTest
         }
         input.Add(actions);
         Console.WriteLine("Testing Shock Cannon new round...");
-        game_t.execute_turn(input);
+        game_t.execute_turn(board, input);
         Console.WriteLine("...passed!");
     }
 }

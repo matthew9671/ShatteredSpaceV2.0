@@ -15,6 +15,9 @@ public class luTest
 
     public static void test_cluster_bomb()
     {
+        board_t board = new board_t(0, 2);
+        player_t player = board.get_players()[0];
+        player.build_weapon(new clusterBomb_t());
         // This is a sample test
         // Write your own test with this as a template
         List<Stack<action_t>> input = new List<Stack<action_t>>();
@@ -25,7 +28,7 @@ public class luTest
         action_t action1 = new action_t();
         action1.spMovement = Vector2.zero;
         action1.movement = Vector2.zero;
-        action1.wpnId = 4;
+        action1.wpnId = 1;
         action1.attack = new attack_t(new Vector2(2, 2));
         actions.Push(action1);
 
@@ -42,7 +45,7 @@ public class luTest
         // #############################
         input.Add(actions);
         Console.WriteLine("Testing cluster bomb...");
-        game_t.execute_turn(input);
+        game_t.execute_turn(board, input);
 
         input = new List<Stack<action_t>>();
         // Generate the action stack for player1
@@ -76,7 +79,7 @@ public class luTest
         // actions.Push(action);
         // #############################
         input.Add(actions);
-        game_t.execute_turn(input);
+        game_t.execute_turn(board, input);
         Console.WriteLine("...Passed!");
     }
 }

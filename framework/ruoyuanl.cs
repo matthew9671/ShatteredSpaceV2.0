@@ -42,7 +42,7 @@ public class ruoyuanTest
         // #############################
         input.Add(actions);
         Console.WriteLine("Testing grenade...");
-        game_t.execute_turn(input);
+        game_t.execute_turn(null, input);
         Console.WriteLine("...Passed!");
     }
 }

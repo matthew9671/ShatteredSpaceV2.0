@@ -15,8 +15,9 @@ public class wenquanTest
 
     public static void test_force_barrier()
     {
-        // This is a sample test
-        // Write your own test with this as a template
+        board_t board = new board_t(0, 2);
+        player_t player = board.get_players()[0];
+        player.build_weapon(new forceBarrier_t());
         List<Stack<action_t>> input = new List<Stack<action_t>>();
         // Generate the action stack for player1
         Stack<action_t> actions = new Stack<action_t>();
@@ -25,7 +26,7 @@ public class wenquanTest
         action_t action = new action_t();
         action.spMovement = Vector2.zero;
         action.movement = new Vector2(1, 0);
-        action.wpnId = 5;
+        action.wpnId = 1;
         action.attack = new doubleAttack_t(new Vector2(4, -3),
         								   new Vector2(5, 0));
         actions.Push(action);
@@ -42,7 +43,7 @@ public class wenquanTest
         // #############################
         input.Add(actions);
         Console.WriteLine("Testing force barrier...");
-        game_t.execute_turn(input);
+        game_t.execute_turn(board, input);
         Console.WriteLine("...Passed!");
     }
 }
@@ -89,8 +90,7 @@ public class forceBarrier_t : weapon_t
 {
     static int[] modules = {0, 0, 0, 1};
     public forceBarrier_t():base(range:5, damage:0, delay:-1, modules:modules)
-    {
-    }
+    {}
   
   	public override bool fire(attack_t attack, board_t board, unit_t master)
     // Create pending damage on the board, 
