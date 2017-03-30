@@ -2,21 +2,88 @@
 // Will eventually be combined with others' versions
 // This would only work in Unity
 
-// This is commented out because it is defined in game.cs
+// #############################################################################
+// ###########
+// ##READ ME##
+// ###########
+
+// The board tiles is the board that the players see in game. 
+// In the planning phase, players click on the board tiles to plan their 
+// movements and attacks. In Shattered Space V1.0 movement and attack are 
+// planned altogether - there is no hint that tells you what you should do 
+// and in what order. Now we are going to change that.
+
+// Now in the planning phase there are several input modes: 
+// ATTACK, MOVE, SPMOVE and WEAPON. In each input mode the relevant tiles are 
+// highlighted while the others turns gray. When the player inputs a command by 
+// clicking on a valid tile, the input mode changes to ask the player for 
+// another input.
+
+// How the tiles are highlighted (which is to say the mode of each tile) 
+// depend on the input mode, the player's position, the board arrangement, 
+// the mouse's position and the weapon that the player is using. For example, 
+// in MOVE mode, only the tile at the player's position and 6 tiles right next 
+// to the player should light up. The other tiles should turn gray.
+
+// #############################################################################
+
+// Relevant stuff defined in game.cs
+// Reproduced here for your convenience
+
+// After we fully transition to Unity we will move these to gameManager.cs
+// public enum inputMode_t {NONE, ATTACK, MOVE, SPMOVE, WEAPON};
+
 // public struct tileMode_t
 // {
 //     // True if we know some damage with positive amount is going to hit the tile in the future
-//     bool isDangerous;
+//     public bool isDangerous;
 //     // Meaningful only when isDangerous is true
 //     // Usually -1, 0 or 1
 //     // If it's -1, the damage falls at end of turn
 //     // 0 means that the damage is on the tile right now
 //     // 1 means that the damage will be put on the tile a step later
-//     int stepsToDamage;
-//     bool isOutOfRange;
-//     bool isValidMove;
-//     bool isValidTarget;
+//     public int stepsToDamage;
+//     public bool isOutOfRange;
+//     public bool isValidMove;
+//     public bool isValidTarget;
 // }
+
+// Some relevant methods in the weapon_t class 
+
+//     public virtual inputMode_t generate_action(action_t action, 
+//         Vector2 playerPos, Vector2 mousePos, inputMode_t inputMode)
+//     // Change the action based on user input and return the next inputMode
+//     {
+//         // This is the most general case
+//         // So we assume that the attack is not generated
+//         // And we are not doing a special movement
+//         Debug.Assert(action.attack == null);
+//         Debug.Assert(inputMode == inputMode_t.ATTACK);
+//         // Add the attack to the action
+//         action.attack = new attack_t(mousePos);
+//         return inputMode_t.MOVE;
+//     }
+
+//     public virtual tileMode_t get_tile_mode(Vector2 tilePos, Vector2 playerPos, 
+//         Vector2 mousePos, inputMode_t inputMode, board_t board, unit_t master)
+//     // Returns the tile mode of the tile at tilePos
+//     // Generally speaking, when inputMode is ATTACK: 
+//     // tile.isOutOfRange = true if it is out of range from playerPos;
+//     // is validAttack if it is in range and have the mouse over it.
+//     {
+//         Debug.Assert(inputMode == inputMode_t.ATTACK);
+//         tileMode_t result = new tileMode_t();
+//         if (!is_in_range(playerPos, tilePos, master))
+//         {
+//             result.isOutOfRange = true;
+//         }
+//         else if (mousePos == tilePos)
+//         {
+//             result.isValidTarget = true;
+//         }
+//         return result;
+//     }
+// #############################################################################
 
 public class tile_t : MonoBehavior
 {
