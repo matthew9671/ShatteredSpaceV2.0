@@ -6,7 +6,6 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Collections.Generic;
 
-
 // This is where we define the global constants for testing 
 // and other convenient stuff
 public class SS
@@ -35,6 +34,18 @@ public class SS
     public static void dbg_log(string message)
     {
         if (VERBOSE) Console.WriteLine(message);
+    }
+
+    public static int distance(Vector2 v1, Vector2 v2)
+    // Returns the length of shortest path in tiles from v1 to v2
+    // On a hexagonal board, ofcourse.
+    { 
+        int x2 = (int)(v2.x - v1.x);
+        int y2 = (int)(v2.y - v1.y);
+        int z = 0 - x2 - y2;
+        int dist = Math.Abs(x2) + Math.Abs(y2) + Math.Abs(z);
+        dist = dist/2;
+        return dist;
     }
 }
 
@@ -1152,10 +1163,53 @@ public class weapon_t
         this.modules = modules;
     }
 
+    // #########################################################################
+    // User interface related methods
     public virtual void refresh()
     // Refresh the weapon so that it can fire again in the next turn.
-    {
+    {}
 
+    public virtual inputMode_t generate_action(action_t action, 
+        Vector2 playerPos, Vector2 mousePos, inputMode_t inputMode)
+    // Change the action based on user input and return the next inputMode
+    {
+        // This is the most general case
+        // So we assume that the attack is not generated
+        // And we are not doing a special movement
+        Debug.Assert(action.attack == null);
+        Debug.Assert(inputMode == inputMode_t.ATTACK);
+        // Add the attack to the action
+        action.attack = new attack_t(mousePos);
+        return inputMode_t.MOVE;
+    }
+
+    public virtual tileMode_t get_tile_mode(Vector2 tilePos, Vector2 playerPos, 
+        Vector2 mousePos, inputMode_t inputMode, board_t board, unit_t master)
+    // Returns the tile mode of the tile at tilePos
+    // Generally speaking, when inputMode is ATTACK: 
+    // tile.isOutOfRange = true if it is out of range from playerPos;
+    // is validAttack if it is in range and have the mouse over it.
+    {
+        Debug.Assert(inputMode == inputMode_t.ATTACK);
+        tileMode_t result = new tileMode_t();
+        if (!is_in_range(playerPos, tilePos, master))
+        {
+            result.isOutOfRange = true;
+        }
+        else if (mousePos == tilePos)
+        {
+            result.isValidTarget = true;
+        }
+        return result;
+    }
+
+    public virtual bool is_in_range(Vector2 playerPos, Vector2 targetPos,
+        unit_t master)
+    // Returns true if targetPos is within attack range from playerPos
+    // Ignoring obstacles.
+    {
+        int d = SS.distance(playerPos, targetPos);
+        return (d > 0) && (d <= get_range(master));
     }
 
     public virtual int get_range(unit_t master)
@@ -1164,6 +1218,7 @@ public class weapon_t
     {
         return range_base;
     }
+    // #########################################################################
 
     public virtual int get_damage_amount(unit_t master)
     // Returns the weapon's damage amount
@@ -1246,4 +1301,23 @@ public class grenadeLauncher_t : weapon_t
             board.create_damage(dmg);
         }
     }
+}
+
+// UI Stuff
+// After we fully transition to Unity we will move these to gameManager.cs
+public enum inputMode_t {NONE, ATTACK, MOVE, SPMOVE, WEAPON};
+
+public struct tileMode_t
+{
+    // True if we know some damage with positive amount is going to hit the tile in the future
+    public bool isDangerous;
+    // Meaningful only when isDangerous is true
+    // Usually -1, 0 or 1
+    // If it's -1, the damage falls at end of turn
+    // 0 means that the damage is on the tile right now
+    // 1 means that the damage will be put on the tile a step later
+    public int stepsToDamage;
+    public bool isOutOfRange;
+    public bool isValidMove;
+    public bool isValidTarget;
 }

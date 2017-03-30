@@ -2,20 +2,21 @@
 // Will eventually be combined with others' versions
 // This would only work in Unity
 
-public struct tileMode_t
-{
-    // True if we know some damage with positive amount is going to hit the tile in the future
-    bool isDangerous;
-    // Meaningful only when isDangerous is true
-    // Usually -1, 0 or 1
-    // If it's -1, the damage falls at end of turn
-    // 0 means that the damage is on the tile right now
-    // 1 means that the damage will be put on the tile a step later
-    int stepsToDamage;
-    bool isOutOfRange;
-    bool isValidMove;
-    bool isValidTarget;
-}
+// This is commented out because it is defined in game.cs
+// public struct tileMode_t
+// {
+//     // True if we know some damage with positive amount is going to hit the tile in the future
+//     bool isDangerous;
+//     // Meaningful only when isDangerous is true
+//     // Usually -1, 0 or 1
+//     // If it's -1, the damage falls at end of turn
+//     // 0 means that the damage is on the tile right now
+//     // 1 means that the damage will be put on the tile a step later
+//     int stepsToDamage;
+//     bool isOutOfRange;
+//     bool isValidMove;
+//     bool isValidTarget;
+// }
 
 public class tile_t : MonoBehavior
 {
@@ -25,8 +26,9 @@ public class tile_t : MonoBehavior
     // ######################################################
     // Unity methods
     void Update()
+    // This function gets called every frame
+    // Useful for animations
     {
-
     }
 
     void OnMouseEnter()
@@ -70,9 +72,13 @@ public static class gameManager_t
 {
     // Input is a component in the action: weaponId, attack, movement or spMovement
     // inputMode tells us which kind of input we want from the user right now
-    enum inputMode_t {ATTACK, MOVE, SPMOVE, WEAPON};
+    // This line is commented out because it is defined in game.cs
+    // enum inputMode_t {NONE, ATTACK, MOVE, SPMOVE, WEAPON};
     public static inputMode_t inputMode;
     // The temporary board is a duplicate board object with only one player
+    public static int playerCount = 2;
+    public static tile_t[,] tiles;
+    public static board_t board;
     public static board_t tempBoard;
     public static weapon_t weapon;
     // The player is also a temporary duplicate
@@ -103,7 +109,8 @@ public static class gameManager_t
     public static void init_game()
     // Called when the game starts
     {
-
+        board = new board_t(0, playerCount);
+        // TODO: Generate the physical board (an array of tile_t's) here
     }
 
     public static void init_planning()
@@ -111,22 +118,11 @@ public static class gameManager_t
     // Creates a temporary duplicate of the player and board, 
     // removes the opponent from the temporary board
     {
-
-    }
-
-    static tileMode_t get_tile_mode(Vector2 tilePos, Vector2 playerPos)
-    // Return the tileMode of the tile on tilePos given playerPos and mousePos
-    {
-        // Get the stepsToDamage
-        // If in WEAPON mode, make all tiles isOutOfRange 
-        // (since we are clicking on the weapon selection menu instead of the board)
-        // If in MOVE mode, make all tiles isOutOfRange except for tiles within one distance from playerPos (even if it is occupied by a solid object!)
-        // If the mouse happens to be on the tile and it is within movement range, 
-        // make it isValidMove (same for attack)
-        // If in ATTACK mode, call get_tile_mode on the weapon
-        // If in SPMOVE mode, also consult the weapon
-        // In addition to the steps above, we also need to set the isDangerous and stepsToDamage
-        // by consulting tempBoard
+        // Get the copy of the board that has only one player
+        tempBoard = board.solo_copy();
+        player = tempBoard.get_players()[0];
+        // Planning always starts with choosing a weapon
+        inputMode = inputMode_t.WEAPON;
     }
 
     public static void mouse_exit()
@@ -151,6 +147,21 @@ public static class gameManager_t
         // Call get_tile_mode on every tile position and call update_tile_mode on the tile_t
     }
 
+    static tileMode_t get_tile_mode(Vector2 tilePos, Vector2 playerPos)
+    // Return the tileMode of the tile on tilePos given playerPos and mousePos
+    {
+        // Get the stepsToDamage
+        // If in WEAPON mode, make all tiles isOutOfRange 
+        // (since we are clicking on the weapon selection menu instead of the board)
+        // If in MOVE mode, make all tiles isOutOfRange except for tiles within one distance from playerPos (even if it is occupied by a solid object!)
+        // If the mouse happens to be on the tile and it is within movement range, 
+        // make it isValidMove (same for attack)
+        // If in ATTACK mode, call get_tile_mode on the weapon
+        // If in SPMOVE mode, also consult the weapon
+        // In addition to the steps above, we also need to set the isDangerous and stepsToDamage
+        // by consulting tempBoard
+    }
+
     public bool add_input()
     // Triggered when a tile is clicked on
     // If the mouse is clicking on a valid tile then add an input, change the input mode and return true;
@@ -171,8 +182,11 @@ public static class gameManager_t
         // We have to be in the ATTACK, MOVE, or SPMOVE modes:
         // if in MOVE, add the movement to action and push it on the action stack
         // and transition to WEAPON if there are still steps left, otherwise finish;
-        // if in ATTACK or SPMOVE, pass the current action, player position and mouseClick
-        // position to the generate_action method in the weapon
+        // if in ATTACK or SPMOVE, pass all the required parameters 
+        // to the generate_action method in the weapon.
+        // The generate_action method changes the current action and returns the 
+        // input mode to transition to (usually MOVE)
+        // We do not consider number of maximum steps for the moment
     }
 
     public bool cancel_input()
