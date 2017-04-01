@@ -85,10 +85,16 @@
 //     }
 // #############################################################################
 
-public class tile_t : MonoBehavior
+using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
+
+public class tile_t : MonoBehaviour
 {
     tileMode_t mode;
     Vector2 position;
+
+    Color validAtkColor = Color.red;
     
     // ######################################################
     // Unity methods
@@ -96,6 +102,7 @@ public class tile_t : MonoBehavior
     // This function gets called every frame
     // Useful for animations
     {
+        
     }
 
     void OnMouseEnter()
@@ -129,7 +136,10 @@ public class tile_t : MonoBehavior
     }
 
     void update_appearence()
-    // Updates the tile's appearence according to the current mode
+    // Updates the tile's appearence according to the current mode\
+    // Turns gray if isOutOfRange
+    // Flashes green if isValidMove
+    // Flashes red if isValidAttack
     {
 
     }
@@ -157,9 +167,11 @@ public static class gameManager_t
     public static action_t action;
     // The action stack of the player we are generating
     public static Stack<action_t> actions;
+    public static GameObject gameTile;
+    public static int spacing = 1;
 
     // Set functions
-    public static void set_mode(tileMode_t mode)
+    public static void set_mode(inputMode_t mode)
     {
         inputMode = mode;
         update_tiles();
@@ -176,8 +188,25 @@ public static class gameManager_t
     public static void init_game()
     // Called when the game starts
     {
+        Transform boardHolder = new GameObject ("Board").transform;
+        gameTile = GameObject.Find ("Quad");
+        gameTile.AddComponent<tile_t> ();
         board = new board_t(0, playerCount);
         // TODO: Generate the physical board (an array of tile_t's) here
+        for (int row = 0; row < board.mapH; row++) {
+            for (int col = 0; col < board.mapW; col++) {
+                int boardX = col - board.centerCol;
+                int boardY = board.centerRow - row;
+                if (board.is_in_board (new Vector2 (boardX, boardY))) {
+                    float x = boardX * spacing + boardY * 0.5f * spacing;
+                    float y = boardY * spacing * Mathf.Sqrt (3) / 2;
+                    GameObject instance = GameObject.Instantiate (gameTile, new Vector3 (x, y, 0), Quaternion.identity) as GameObject;
+                    tile_t tile = instance.GetComponent<tile_t> ();
+                    instance.transform.SetParent (boardHolder);
+                }
+            }
+        }
+        GameObject.Destroy (gameTile);
     }
 
     public static void init_planning()
@@ -186,10 +215,11 @@ public static class gameManager_t
     // removes the opponent from the temporary board
     {
         // Get the copy of the board that has only one player
-        tempBoard = board.solo_copy();
-        player = tempBoard.get_players()[0];
+        tempBoard = board_t.solo_copy(board);
+        tempPlayer = tempBoard.get_players()[0];
         // Planning always starts with choosing a weapon
         inputMode = inputMode_t.WEAPON;
+        action = new action_t(Vector2.zero);
     }
 
     public static void mouse_exit()
@@ -227,9 +257,10 @@ public static class gameManager_t
         // If in SPMOVE mode, also consult the weapon
         // In addition to the steps above, we also need to set the isDangerous and stepsToDamage
         // by consulting tempBoard
+        return new tileMode_t();
     }
 
-    public bool add_input()
+    public static bool add_input()
     // Triggered when a tile is clicked on
     // If the mouse is clicking on a valid tile then add an input, change the input mode and return true;
     // If not, ignore it and return false.
@@ -254,9 +285,10 @@ public static class gameManager_t
         // The generate_action method changes the current action and returns the 
         // input mode to transition to (usually MOVE)
         // We do not consider number of maximum steps for the moment
+        return false;
     }
 
-    public bool cancel_input()
+    public static bool cancel_input()
     // Triggered when right mouse button is clicked
     // If there are inputs to cancel,
     // cancel it by changing the current action or poping the action from the stack,
@@ -268,5 +300,6 @@ public static class gameManager_t
         // Basically if you call add_input() followed by cancel_input() nothing should change.
         // So you should be able to figure out what to put in here
         // after you finish add_input()
+        return false;
     }
 }
