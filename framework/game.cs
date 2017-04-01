@@ -555,7 +555,7 @@ public class board_t
         {
             foreach(object_t obj in tile)
             {
-                if (obj.solid) return false;
+                if (obj.solid && obj.exists) return false;
             }
             return true;
         }
@@ -680,6 +680,8 @@ public class board_t
         {
             obj.end_turn(this);
         }
+        // Many objects destory themselves at end of turn!
+        empty_remove_list();
     }
 
     void empty_remove_list()

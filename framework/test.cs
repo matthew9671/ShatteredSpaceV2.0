@@ -20,7 +20,7 @@ public class SSTest
             test_board();
             test_build_weapons();
             test_weapons();
-            test_movement();
+            //test_movement();
         }
     }
 
@@ -32,12 +32,12 @@ public class SSTest
         test_build_weapons();
         // test_blaster();
         // test_grenade();
-        yueTest.test_weapons();
-        ruoyuanTest.test_weapons();
-        wenzeTest.test_weapons();
-        luTest.test_weapons();
+        //yueTest.test_weapons();
+        //ruoyuanTest.test_weapons();
+        //wenzeTest.test_weapons();
+        //luTest.test_weapons();
         wenquanTest.test_weapons();
-        ryanTest.test_weapons();
+        //ryanTest.test_weapons();
         Console.WriteLine("...Passed!");
     }
 

@@ -27,9 +27,17 @@ public class wenquanTest
         action.spMovement = Vector2.zero;
         action.movement = new Vector2(1, 0);
         action.wpnId = 1;
-        action.attack = new doubleAttack_t(new Vector2(4, -3),
+        action.attack = new doubleAttack_t(new Vector2(4, 0),
         								   new Vector2(5, 0));
         actions.Push(action);
+        action_t action2 = new action_t();
+        action2.spMovement = Vector2.zero;
+        action2.movement = new Vector2(1, 0);
+        action2.wpnId = 1;
+        action2.attack = new doubleAttack_t(new Vector2(6, 6),
+        								   new Vector2(-6, -6));
+        actions.Push(action2);
+        
         // #############################
         input.Add(actions);
         // Generate the action stack for player2
@@ -39,10 +47,84 @@ public class wenquanTest
         action.spMovement = Vector2.zero;
         action.movement = Vector2.zero;
         action.wpnId = -1;
+        action.movement = new Vector2(1,0);
         actions.Push(action);
+        action2 = new action_t();
+        action2.spMovement = Vector2.zero;
+        action2.movement = new Vector2(1, 0);
+        action2.wpnId = 1;
+        //action2.attack = new doubleAttack_t(new Vector2(4, -3),
+        //								   new Vector2(5, 0));
+        actions.Push(action2);
         // #############################
         input.Add(actions);
         Console.WriteLine("Testing force barrier...");
+        Console.WriteLine("TURN 1");
+        game_t.execute_turn(board, input);
+        
+        //################## 
+        //TURN 2
+        input = new List<Stack<action_t>>();
+        actions = new Stack<action_t>();
+        action = new action_t();
+        action.spMovement = Vector2.zero;
+        action.movement = new Vector2(0, 0);
+        action.wpnId = -1;
+        actions.Push(action);
+        input.Add(actions);
+        //############ player2
+        actions = new Stack<action_t>();
+        action = new action_t();
+        action.spMovement = Vector2.zero;
+        action.movement = new Vector2(0, 0);
+        action.wpnId = -1;
+        actions.Push(action);
+        input.Add(actions);
+        Console.WriteLine("TURN 2");
+        game_t.execute_turn(board, input);
+        Console.WriteLine("...Passed!");
+        //################## 
+        //TURN 3
+        input = new List<Stack<action_t>>();
+        actions = new Stack<action_t>();
+        action = new action_t();
+        action.spMovement = Vector2.zero;
+        action.movement = new Vector2(-1, 0);
+        action.wpnId = -1;
+        actions.Push(action);
+        input.Add(actions);
+        //############ player2
+        actions = new Stack<action_t>();
+        action = new action_t();
+        action.spMovement = Vector2.zero;
+        action.movement = new Vector2(0, 0);
+        action.wpnId = -1;
+        actions.Push(action);
+        input.Add(actions);
+        Console.WriteLine("TURN 3");
+        game_t.execute_turn(board, input);
+        Console.WriteLine("...Passed!");
+
+        //################## 
+        //TURN 4 blaster
+        input = new List<Stack<action_t>>();
+        actions = new Stack<action_t>();
+        action = new action_t();
+        action.spMovement = Vector2.zero;
+        action.movement = new Vector2(0, 0);
+        action.wpnId = 0;
+        action.attack = new attack_t(new Vector2(4,0));
+        actions.Push(action);
+        input.Add(actions);
+        //############ player2
+        actions = new Stack<action_t>();
+        action = new action_t();
+        action.spMovement = Vector2.zero;
+        action.movement = new Vector2(0, 0);
+        action.wpnId = -1;
+        actions.Push(action);
+        input.Add(actions);
+        Console.WriteLine("TURN 4 blaster");
         game_t.execute_turn(board, input);
         Console.WriteLine("...Passed!");
     }
@@ -73,8 +155,13 @@ public class barrier_t : unit_t
 	public override void end_turn(board_t board)
 	{
 		base.end_turn(board);
+		if (!this.exists && !board.is_free(this.get_pos())) 
+		{
+			Console.Write(this.get_pos().ToString());
+			Console.Write("Self-destruct!");
+			board.remove_later(this);
+		}
 		this.exists = true;
-		if (!board.is_free(this.get_pos())) board.remove_later(this);
 	}
 }
 
@@ -106,11 +193,11 @@ public class forceBarrier_t : weapon_t
         int delay = get_delay(master);
         barrier_t barrier = new barrier_t();
         barrier.stepLife = -1;
-        barrier.turnLife = 3;
+        barrier.turnLife = 4;
         board.put_object(pos1, barrier);
         barrier = new barrier_t();
         barrier.stepLife = -1;
-        barrier.turnLife = 3;
+        barrier.turnLife = 4;
         board.put_object(pos2, barrier);
         return true;
     }
