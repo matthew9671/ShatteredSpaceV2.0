@@ -862,7 +862,12 @@ public class board_t
     public static board_t solo_copy(board_t board)
     // Make a copy of the board with only one player on it
     {
-        return null;
+        return board;
+    }
+
+    public void set_dangerous(Vector2 tilePos, tileMode_t tileMode)
+    {
+        return;
     }
 }
 

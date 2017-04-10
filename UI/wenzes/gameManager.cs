@@ -92,17 +92,30 @@ using System.Collections.Generic;
 public class tile_t : MonoBehaviour
 {
     tileMode_t mode;
-    Vector2 position;
+    public Vector2 position;
+    Renderer rend;
+    bool flashing = false;
 
+    Color flashingColor = Color.green;
+    Color validMoveColor = Color.green;
     Color validAtkColor = Color.red;
+    Color outOfRangeColor = Color.gray;
     
     // ######################################################
     // Unity methods
+    void Start()
+    {
+        rend = GetComponent<Renderer> ();
+    }
+
     void Update()
     // This function gets called every frame
     // Useful for animations
     {
-        
+        Color maxColor = Color.white;
+        if (flashing) {
+            rend.material.color = Color.Lerp (flashingColor, maxColor, Mathf.PingPong (Time.time, 0.7f));
+        }
     }
 
     void OnMouseEnter()
@@ -141,7 +154,19 @@ public class tile_t : MonoBehaviour
     // Flashes green if isValidMove
     // Flashes red if isValidAttack
     {
-
+        rend.material.color = Color.white;
+        flashing = false;
+        if (mode.isValidMove) {
+            rend.material.color = validMoveColor;
+            flashing = true;
+            flashingColor = validMoveColor;
+        } else if (mode.isOutOfRange) {
+            rend.material.color = outOfRangeColor;
+        } else if (mode.isValidTarget) {
+            rend.material.color = validAtkColor;
+            flashing = true;
+            flashingColor = validAtkColor;
+        }
     }
 }
 
@@ -192,6 +217,7 @@ public static class gameManager_t
         gameTile = GameObject.Find ("Quad");
         gameTile.AddComponent<tile_t> ();
         board = new board_t(0, playerCount);
+        tiles = new tile_t[board.mapH, board.mapW];
         // TODO: Generate the physical board (an array of tile_t's) here
         for (int row = 0; row < board.mapH; row++) {
             for (int col = 0; col < board.mapW; col++) {
@@ -202,11 +228,14 @@ public static class gameManager_t
                     float y = boardY * spacing * Mathf.Sqrt (3) / 2;
                     GameObject instance = GameObject.Instantiate (gameTile, new Vector3 (x, y, 0), Quaternion.identity) as GameObject;
                     tile_t tile = instance.GetComponent<tile_t> ();
+                    tile.position = new Vector2 (boardX, boardY);
+                    tiles [row, col] = tile;
                     instance.transform.SetParent (boardHolder);
                 }
             }
         }
         GameObject.Destroy (gameTile);
+        init_planning ();
     }
 
     public static void init_planning()
@@ -220,6 +249,8 @@ public static class gameManager_t
         // Planning always starts with choosing a weapon
         inputMode = inputMode_t.WEAPON;
         action = new action_t(Vector2.zero);
+        actions = new Stack<action_t>();
+        actions.Push(action);
     }
 
     public static void mouse_exit()
@@ -242,6 +273,16 @@ public static class gameManager_t
     // Updates the appearance of all the tiles
     {
         // Call get_tile_mode on every tile position and call update_tile_mode on the tile_t
+        for (int row = 0; row < board.mapH; row++) {
+            for (int col = 0; col < board.mapW; col++) {
+                int boardX = col - board.centerCol;
+                int boardY = board.centerRow - row;
+                tileMode_t cur = get_tile_mode (new Vector2 (boardX, boardY), tempPlayer.get_pos());
+                if (tiles [row, col] != null) {
+                    tiles [row, col].update_tile_mode (cur);
+                }
+            }
+        }
     }
 
     static tileMode_t get_tile_mode(Vector2 tilePos, Vector2 playerPos)
@@ -257,7 +298,30 @@ public static class gameManager_t
         // If in SPMOVE mode, also consult the weapon
         // In addition to the steps above, we also need to set the isDangerous and stepsToDamage
         // by consulting tempBoard
-        return new tileMode_t();
+        tileMode_t tile = new tileMode_t();
+        if (inputMode == inputMode_t.WEAPON){
+            tile.isOutOfRange = true;
+            tile.isValidMove = false;
+            tile.isValidTarget = false;
+        }
+        else if (inputMode == inputMode_t.MOVE){
+            if (SS.distance(tilePos, playerPos) <= 1){
+                tile.isOutOfRange = false;
+            }
+            else tile.isOutOfRange = true;
+            tile.isValidMove = false;
+            if (mousePos == tilePos && !tile.isOutOfRange){
+                tile.isValidMove = true;
+            }
+            tile.isValidTarget = false;
+        }
+
+        else{
+            tile = weapon.get_tile_mode(tilePos, playerPos, mousePos, inputMode,
+                tempBoard, tempPlayer);
+        }
+        tempBoard.set_dangerous(tilePos, tile);
+        return tile;
     }
 
     public static bool add_input()
@@ -285,7 +349,22 @@ public static class gameManager_t
         // The generate_action method changes the current action and returns the 
         // input mode to transition to (usually MOVE)
         // We do not consider number of maximum steps for the moment
-        return false;
+        tileMode_t cur = get_tile_mode(mousePos, tempPlayer.get_pos());
+        if (!cur.isValidMove) return false;
+        if (inputMode == inputMode_t.WEAPON)
+            return false;
+        else if (inputMode == inputMode_t.ATTACK || inputMode == inputMode_t.SPMOVE) {
+            inputMode = weapon.generate_action (action, tempPlayer.get_pos (), mousePos, inputMode);
+        } else {
+            Vector2 diff = mousePos - tempPlayer.get_pos (); 
+            action = new action_t (diff);
+            actions.Push (action);
+            inputMode = inputMode_t.WEAPON;
+            Debug.Log ("added action: ");
+            Debug.Log (diff.ToString ());
+        }
+        update_tiles();
+        return true;
     }
 
     public static bool cancel_input()
@@ -301,5 +380,16 @@ public static class gameManager_t
         // So you should be able to figure out what to put in here
         // after you finish add_input()
         return false;
+    }
+
+    public static void test()
+    {
+        Debug.Log ("This is a test");
+
+        tileMode_t newMode = new tileMode_t ();
+        set_mode (inputMode_t.MOVE);
+        //newMode.isValidMove = true;
+
+        //tiles [0, 0].update_tile_mode (newMode);  
     }
 }
