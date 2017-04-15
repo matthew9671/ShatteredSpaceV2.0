@@ -1,6 +1,6 @@
 #define DEBUG
 using System;
-//using UnityEngine;
+// using UnityEngine;
 using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
@@ -97,7 +97,7 @@ public class wenzeTest
 public class dirAttack_t : attack_t
 {
     public int dir;
-    public dirAttack_t(int dir):base(null)
+	public dirAttack_t(int dir):base(Vector2.zero)
     {
         this.dir = dir;
     }
@@ -141,7 +141,7 @@ public class shockDamage_t : damage_t
             damage_t piece;
             int randomPos;
             Vector2 targetPos;
-            Random rnd = new Random();
+			System.Random rnd = new System.Random();
 
             for (int i = 0; i < numOfPieces; i++) {
                 randomPos = rnd.Next(18);
@@ -190,6 +190,78 @@ public class shockCannon_t : weapon_t
             board.create_damage(dmg);
         }
         return true;
+    }
+
+    int get_direction(Vector2 mousePos, Vector2 playerPos) {
+        if (SS.distance(mousePos, playerPos) == 1){
+            for (int i = 0; i < 6; i++){
+                if (mousePos - playerPos == pos[i, 2])  return i;
+            }
+        }
+        else if (SS.distance(mousePos, playerPos) == 2){
+            for (int i = 0; i < 6; i++){
+                if (mousePos - playerPos == pos[i, 1])  return i;
+            }
+        }
+        return -1;
+    }
+
+    public override inputMode_t generate_action(action_t action, 
+        Vector2 playerPos, Vector2 mousePos, inputMode_t inputMode)
+    // Change the action based on user input and return the next inputMode
+    {
+        // This is the most general case
+        // So we assume that the attack is not generated
+        // And we are not doing a special movement
+        System.Diagnostics.Debug.Assert(action.attack == null);
+        System.Diagnostics.Debug.Assert(inputMode == inputMode_t.ATTACK);
+        // Add the attack to the action
+        action.attack = new dirAttack_t(get_direction(mousePos, playerPos));
+        return inputMode_t.MOVE;
+    }
+
+    bool is_valid_attack(Vector2 tilePos, Vector2 playerPos, Vector2 mousePos)
+    {
+        int dir = get_direction(mousePos, playerPos);
+		if (dir == -1)
+			return false;
+        for (int i = 0 ; i < 3; i++){
+            if (tilePos - playerPos == pos[dir, i])  return true;
+        }
+        return false;
+    }
+
+    public override tileMode_t get_tile_mode(Vector2 tilePos, Vector2 playerPos, 
+        Vector2 mousePos, inputMode_t inputMode, board_t board, unit_t master)
+    // Returns the tile mode of the tile at tilePos
+    // Generally speaking, when inputMode is ATTACK: 
+    // tile.isOutOfRange = true if it is out of range from playerPos;
+    // is validAttack if it is in range and have the mouse over it.
+    {
+        System.Diagnostics.Debug.Assert(inputMode == inputMode_t.ATTACK);
+        tileMode_t result = new tileMode_t();
+		if (!is_in_range(playerPos, tilePos, master)) {
+            result.isOutOfRange = true;
+        }
+        else {
+			result.isValidTarget = is_valid_attack(tilePos, playerPos, mousePos);
+        }
+        return result;
+    }
+
+    public override bool is_in_range(Vector2 playerPos, Vector2 targetPos,
+        unit_t master)
+    // Returns true if targetPos is within attack range from playerPos
+    // Ignoring obstacles.
+    {
+		for (int i = 0; i < 6; i++) {
+			for (int j = 0; j < 3; j++) {
+				if (targetPos - playerPos == pos [i, j]) {
+					return true;
+				}
+			}
+		}
+		return false;
     }
 
 }
