@@ -17,7 +17,7 @@ public class SS
     public const int FIELD = 3;
     public const int PARTICLE_OVERHEATED = 4;
     public const bool DBG = true;
-    public const bool VERBOSE = false;
+    public const bool VERBOSE = true;
     // This is the randomized seed for all random events in the game
     // Created by one client and shared across all clients
     // So that the outcomes are identical across clients
@@ -473,6 +473,8 @@ public class board_t
     // Should use a priority queue but it's too much trouble
     List<damage_t> pending;
     List<object_t> objsToRemove = new List<object_t>();
+    List<object_t> objsToPut = new List<object_t>();
+    List<Vector2> posToPut = new List<Vector2>();
     // For debugging
     const string player_symbol = "O";
     const string turret_symbol = "T";
@@ -610,6 +612,12 @@ public class board_t
         }
     }
 
+    public void put_later(Vector2 pos, object_t obj)
+    {
+        posToPut.Add(pos);
+        objsToPut.Add(obj);
+    }
+
     public bool put_object(Vector2 pos, object_t obj)
     // Put object on the board at pos. Returns false if pos is invalid.
     {
@@ -628,12 +636,6 @@ public class board_t
         }
     }
 
-    public void remove_later(object_t obj)
-    // Add obj to toRemove
-    {
-        objsToRemove.Add(obj);
-    }
-
     public void step_update()
     // Update the board and all the objects in it
     // update all objects->update_damage->check_collisions
@@ -648,7 +650,7 @@ public class board_t
         this.update_damage();
         this.check_collisions();
         this.remove_destroyed();
-        this.empty_remove_list();
+        this.empty_object_list();
     }
 
     public void remove_destroyed()
@@ -681,17 +683,30 @@ public class board_t
             obj.end_turn(this);
         }
         // Many objects destory themselves at end of turn!
-        empty_remove_list();
+        empty_object_list();
     }
 
-    void empty_remove_list()
+    public void remove_later(object_t obj)
+    // Add obj to toRemove
+    {
+        objsToRemove.Add(obj);
+    }
+
+    void empty_object_list()
     // Empty toRemove and remove every object in it from the board
+    // The same with toPut
     {
         foreach(object_t obj in objsToRemove)
         {
             this.remove_object(obj);
         }
         objsToRemove.Clear();
+        for(int i = 0; i < objsToPut.Count; i++)
+        {
+            this.put_object(posToPut[i], objsToPut[i]);
+        }
+        objsToPut.Clear();
+        posToPut.Clear();
     }
 
     public void clear_pending_damage()
@@ -961,7 +976,8 @@ public class unit_t : object_t
     // Returns false if the unit is destroyed.
     {
         int amount = dmg.amount;
-        return take_damage(amount);
+        bool alive = this.take_damage(amount);
+        return alive;
     }
 
     public virtual bool take_damage(int amount)
