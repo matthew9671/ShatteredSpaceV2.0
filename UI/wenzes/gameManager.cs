@@ -86,6 +86,7 @@
 // #############################################################################
 
 using UnityEngine;
+using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -95,6 +96,7 @@ public class tile_t : MonoBehaviour
     public Vector2 position;
     Renderer rend;
     bool flashing = false;
+    bool rightHold = false;
 
     Color flashingColor = Color.green;
     Color validMoveColor = Color.green;
@@ -133,6 +135,17 @@ public class tile_t : MonoBehaviour
     // Doesn't work on the right mouse button
     {
         gameManager_t.add_input();
+    }
+
+    void OnMouseOver(){
+        if (Input.GetButton ("Fire2")) {   // Detect right MouseUp event manually
+            rightHold = true;
+        } else {
+            if(rightHold){
+                gameManager_t.cancel_input ();
+                rightHold = false;
+            }
+        }
     }
 
     // End of Unity methods
@@ -194,15 +207,40 @@ public static class gameManager_t
     public static Stack<action_t> actions;
     public static GameObject gameTile;
     public static int spacing = 1;
+    // For testing
+    static Text output;
 
     // Set functions
     public static void set_mode(inputMode_t mode)
     {
         inputMode = mode;
+        Debug.Log ("Set_mode:");
+        print_mode (mode);
         update_tiles();
     }
 
-    public static void set_weapon(weapon_t wpn){weapon = wpn;}
+    public static void print_mode(inputMode_t mode)
+    {
+        if (mode == inputMode_t.MOVE) {
+            Debug.Log ("Move");
+        } else if (mode == inputMode_t.ATTACK) {
+            Debug.Log ("Attack");
+        } else if (mode == inputMode_t.WEAPON) {
+            Debug.Log ("Weapon");
+        }
+    }
+
+    public static void set_weapon(int wpnId)
+    {
+        if (wpnId != -1) {
+            weapon = tempPlayer.weapons [wpnId];
+        } 
+        else 
+        {
+            weapon = null;
+        }
+        action.wpnId = wpnId;
+    }
 
     public static void set_mouse_position(Vector2 pos)
     {
@@ -216,6 +254,7 @@ public static class gameManager_t
         Transform boardHolder = new GameObject ("Board").transform;
         gameTile = GameObject.Find ("Quad");
         gameTile.AddComponent<tile_t> ();
+        output = GameObject.Find ("Output").GetComponent<Text>();
         board = new board_t(0, playerCount);
         tiles = new tile_t[board.mapH, board.mapW];
         // TODO: Generate the physical board (an array of tile_t's) here
@@ -246,6 +285,7 @@ public static class gameManager_t
         // Get the copy of the board that has only one player
         tempBoard = board_t.solo_copy(board);
         tempPlayer = tempBoard.get_players()[0];
+        tempPlayer.build_weapon (new shockCannon_t ());
         // Planning always starts with choosing a weapon
         inputMode = inputMode_t.WEAPON;
         action = new action_t(Vector2.zero);
@@ -349,21 +389,31 @@ public static class gameManager_t
         // The generate_action method changes the current action and returns the 
         // input mode to transition to (usually MOVE)
         // We do not consider number of maximum steps for the moment
+        Debug.Log ("Add input!");
+        print_mode (inputMode);
         tileMode_t cur = get_tile_mode(mousePos, tempPlayer.get_pos());
-        if (!cur.isValidMove) return false;
-        if (inputMode == inputMode_t.WEAPON)
+        inputMode_t newMode = new inputMode_t();
+        if (cur.isOutOfRange) return false;
+        if (inputMode == inputMode_t.WEAPON) {
             return false;
+        }
         else if (inputMode == inputMode_t.ATTACK || inputMode == inputMode_t.SPMOVE) {
-            inputMode = weapon.generate_action (action, tempPlayer.get_pos (), mousePos, inputMode);
+            //Debug.Log ("New attack added!");
+            //Debug.Log("weapon id: " + action.wpnId.ToString());
+            newMode = weapon.generate_action (action, tempPlayer.get_pos (), mousePos, inputMode);
+            //if (action.attack is dirAttack_t)
+            //  Debug.Log ("this is a dirattack");
+            actions.Pop ();
+            actions.Push (action);
         } else {
             Vector2 diff = mousePos - tempPlayer.get_pos (); 
             action = new action_t (diff);
             actions.Push (action);
-            inputMode = inputMode_t.WEAPON;
-            Debug.Log ("added action: ");
-            Debug.Log (diff.ToString ());
+            newMode = inputMode_t.WEAPON;
+            //Debug.Log ("added action: ");
+            //Debug.Log (diff.ToString ());
         }
-        update_tiles();
+        set_mode (newMode);
         return true;
     }
 
@@ -379,7 +429,20 @@ public static class gameManager_t
         // Basically if you call add_input() followed by cancel_input() nothing should change.
         // So you should be able to figure out what to put in here
         // after you finish add_input()
-        return false;
+        Debug.Log("cancel input");
+        inputMode_t newMode = new inputMode_t();
+        action_t prevAct = actions.Pop ();
+        if (prevAct == null)
+            return false;
+        if (inputMode == inputMode_t.WEAPON) {
+            newMode = inputMode_t.MOVE;
+        } 
+        else {
+            newMode = weapon.cancel_action (prevAct, inputMode);
+            actions.Push (prevAct);
+        }
+        set_mode (newMode);
+        return true;
     }
 
     public static void test()
@@ -392,4 +455,28 @@ public static class gameManager_t
 
         //tiles [0, 0].update_tile_mode (newMode);  
     }
+
+    public static void test_weapon()
+    {
+        Debug.Log ("Testing weapon");
+        set_weapon (1);
+        set_mode (inputMode_t.ATTACK);
+        update_tiles ();
+    }
+
+    public static void print_stack()
+    {
+        output.text = "";
+        action_t[] actionArray = actions.ToArray ();
+        foreach (action_t act in actionArray) {
+            output.text += "weapon ID: " + act.wpnId.ToString () + "\n";
+            output.text += "movement: " + act.movement.ToString () + "\n";
+            output.text += "special movement: " + act.spMovement.ToString () + "\n";
+            if (act.attack is dirAttack_t)
+                output.text += "dirAttack: dir = " + (act.attack as dirAttack_t).dir.ToString () + "\n";
+            else
+                output.text += "attack: target = " + act.attack.target.ToString () + "\n";
+        }
+    }
+
 }

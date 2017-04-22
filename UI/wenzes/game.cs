@@ -172,7 +172,7 @@ public class attack_t
 }
 
 // An action is a single step that a player executes
-public struct action_t
+public class action_t
 {
     public Vector2 movement;
     // Special movement caused by recoil or combustion thruster
@@ -1192,6 +1192,19 @@ public class weapon_t
         // Add the attack to the action
         action.attack = new attack_t(mousePos);
         return inputMode_t.MOVE;
+    }
+
+    public virtual inputMode_t cancel_action(action_t action, inputMode_t inputMode)
+    {
+        if (inputMode == inputMode_t.ATTACK)
+            return inputMode_t.WEAPON;
+        else if (inputMode == inputMode_t.MOVE) {
+            action.target = Vector2.zero;
+            return inputMode_t.ATTACK;
+        }
+        else {
+            return inputMode_t.MOVE;
+        }
     }
 
     public virtual tileMode_t get_tile_mode(Vector2 tilePos, Vector2 playerPos, 

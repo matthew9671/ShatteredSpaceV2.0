@@ -1,6 +1,6 @@
 #define DEBUG
 using System;
-// using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
@@ -29,14 +29,14 @@ public class wenzeTest
         // player 1 moves
         for (int i = 0; i<5; i++)
         {
-            action = new action_t();
+            action = new action_t(Vector2.zero);
             action.spMovement = Vector2.zero;
             action.movement = new Vector2(1,0);
             action.wpnId = -1;
             actions.Push(action);
         }
         // player 1 attacks
-        action = new action_t();
+        action = new action_t(Vector2.zero);
         action.spMovement = Vector2.zero;
         action.movement = Vector2.zero;
         action.attack = new dirAttack_t(3);
@@ -45,7 +45,7 @@ public class wenzeTest
         // player 1 moves
         for (int i = 0; i<5; i++)
         {
-            action = new action_t();
+            action = new action_t(Vector2.zero);
             action.spMovement = Vector2.zero;
             action.movement = new Vector2(-1,0);
             action.wpnId = -1;
@@ -56,7 +56,7 @@ public class wenzeTest
         // Generate the action stack for player2
         actions = new Stack<action_t>();
         // player 2 does nothing
-        action = new action_t();
+        action = new action_t(Vector2.zero);
         action.spMovement = Vector2.zero;
         action.movement = Vector2.zero;
         action.wpnId = -1;
@@ -71,7 +71,7 @@ public class wenzeTest
         actions = new Stack<action_t>();
         for (int i = 0; i<3; i++)
         {
-            action = new action_t();
+            action = new action_t(Vector2.zero);
             action.spMovement = Vector2.zero;
             action.movement = new Vector2(0,-1);
             action.wpnId = -1;
@@ -81,7 +81,7 @@ public class wenzeTest
         actions = new Stack<action_t>();
         for (int i = 0; i<3; i++)
         {
-            action = new action_t();
+            action = new action_t(Vector2.zero);
             action.spMovement = Vector2.zero;
             action.movement = new Vector2(0,-1);
             action.wpnId = -1;
@@ -97,7 +97,7 @@ public class wenzeTest
 public class dirAttack_t : attack_t
 {
     public int dir;
-	public dirAttack_t(int dir):base(Vector2.zero)
+    public dirAttack_t(int dir):base(Vector2.zero)
     {
         this.dir = dir;
     }
@@ -141,7 +141,7 @@ public class shockDamage_t : damage_t
             damage_t piece;
             int randomPos;
             Vector2 targetPos;
-			System.Random rnd = new System.Random();
+            System.Random rnd = new System.Random();
 
             for (int i = 0; i < numOfPieces; i++) {
                 randomPos = rnd.Next(18);
@@ -219,12 +219,25 @@ public class shockCannon_t : weapon_t
         action.attack = new dirAttack_t(get_direction(mousePos, playerPos));
         return inputMode_t.MOVE;
     }
+        
+    public override inputMode_t cancel_action(action_t action, inputMode_t inputMode)
+    {
+        if (inputMode == inputMode_t.ATTACK)
+            return inputMode_t.WEAPON;
+        else if (inputMode == inputMode_t.MOVE) {
+            action.target = Vector2.zero;
+            return inputMode_t.ATTACK;
+        } 
+        else {
+            return inputMode_t.MOVE;
+        }
+    }
 
     bool is_valid_attack(Vector2 tilePos, Vector2 playerPos, Vector2 mousePos)
     {
         int dir = get_direction(mousePos, playerPos);
-		if (dir == -1)
-			return false;
+        if (dir == -1)
+            return false;
         for (int i = 0 ; i < 3; i++){
             if (tilePos - playerPos == pos[dir, i])  return true;
         }
@@ -240,11 +253,11 @@ public class shockCannon_t : weapon_t
     {
         System.Diagnostics.Debug.Assert(inputMode == inputMode_t.ATTACK);
         tileMode_t result = new tileMode_t();
-		if (!is_in_range(playerPos, tilePos, master)) {
+        if (!is_in_range(playerPos, tilePos, master)) {
             result.isOutOfRange = true;
         }
         else {
-			result.isValidTarget = is_valid_attack(tilePos, playerPos, mousePos);
+            result.isValidTarget = is_valid_attack(tilePos, playerPos, mousePos);
         }
         return result;
     }
@@ -254,14 +267,14 @@ public class shockCannon_t : weapon_t
     // Returns true if targetPos is within attack range from playerPos
     // Ignoring obstacles.
     {
-		for (int i = 0; i < 6; i++) {
-			for (int j = 0; j < 3; j++) {
-				if (targetPos - playerPos == pos [i, j]) {
-					return true;
-				}
-			}
-		}
-		return false;
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 3; j++) {
+                if (targetPos - playerPos == pos [i, j]) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
 }
