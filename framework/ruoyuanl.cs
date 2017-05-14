@@ -18,9 +18,9 @@ public class ruoyuanTest
         return;
         // This is a sample test
         // Write your own test with this as a template
-        List<Stack<action_t>> input = new List<Stack<action_t>>();
-        // Generate the action stack for player1
-        Stack<action_t> actions = new Stack<action_t>();
+        List<List<action_t>> input = new List<List<action_t>>();
+        // Generate the action List for player1
+        List<action_t> actions = new List<action_t>();
         // Generate one action
         // #############################
         action_t action = new action_t();
@@ -28,17 +28,17 @@ public class ruoyuanTest
         action.movement = Vector2.zero;
         action.wpnId = 1;
         action.attack = new attack_t(new Vector2(-2, 0));
-        actions.Push(action);
+        actions.Add(action);
         // #############################
         input.Add(actions);
-        // Generate the action stack for player2
-        actions = new Stack<action_t>();
+        // Generate the action List for player2
+        actions = new List<action_t>();
         // #############################
         action = new action_t();
         action.spMovement = Vector2.zero;
         action.movement = Vector2.zero;
         action.wpnId = -1;
-        actions.Push(action);
+        actions.Add(action);
         // #############################
         input.Add(actions);
         Console.WriteLine("Testing grenade...");

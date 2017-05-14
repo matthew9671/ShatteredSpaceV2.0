@@ -1,0 +1,5 @@
+Introduction to code in Shattered Space
+
+One of the central features (and the most difficult to implement) is the variety of weapons, most of which gives rise to a different playstyle or game mechanic. In order to implement these weapons efficiently and manage them with ease, we have to introduce a rather non-trivial framework upon which to implement these weapons.
+
+To sum up the framework in one sentence: Everything is an "object" (except for weapons) that are placed on and managed by the board. As every step or turn goes by, all objects do their unique thing. Some are destroyed after several steps, some move to other positions, some can create other objects. Weapons are not objects themselves, but they are in charge of generating damage objects. By making the weapon generate damage objects in different ways and by making the damage objects do different things, we can implement different weapon designs in a modular way. 

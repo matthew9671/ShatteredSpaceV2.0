@@ -1,6 +1,6 @@
 #define DEBUG
 using System;
-//using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
@@ -95,72 +95,72 @@ public class DumpStackTraceListener : TraceListener
   }
 }
 
-// This is defined in Unity but we're not running the prgram in Unity for now
-public class Vector2
-{
-   public int x;
-   public int y;
-   public static readonly Vector2 zero = new Vector2(0,0);
+//// This is defined in Unity but we're not running the prgram in Unity for now
+//public class Vector2
+//{
+//    public int x;
+//    public int y;
+//    public static readonly Vector2 zero = new Vector2(0,0);
+//
+//    public Vector2(int x, int y)
+//    {
+//        this.x = x;
+//        this.y = y;
+//    }
+//
+//    public static Vector2 operator +(Vector2 v1, Vector2 v2) 
+//    {
+//        return new Vector2(v1.x + v2.x, v1.y + v2.y);
+//    }
+//
+//    public static Vector2 operator -(Vector2 v1, Vector2 v2) 
+//    {
+//        return new Vector2(v1.x - v2.x, v1.y - v2.y);
+//    }
+//
+//    public static Vector2 operator *(Vector2 v1, int c) 
+//    {
+//        return new Vector2(v1.x * c, v1.y * c);
+//    }
+//
+//    public static Vector2 operator *(int c, Vector2 v1) 
+//    {
+//        return new Vector2(v1.x * c, v1.y * c);
+//    }
+//
+//    public static bool operator ==(Vector2 v1, Vector2 v2) 
+//    {
+//        if ((System.Object)v2 == null)
+//        {
+//            return (System.Object)v1 == null;
+//        }
+//        return (v1.x == v2.x) && (v1.y == v2.y);
+//    }
+//
+//    public static bool operator !=(Vector2 v1, Vector2 v2) 
+//    { 
+//        return !(v1 == v2);
+//    }
+//
+//    public string ToString()
+//    {
+//        return "(" + this.x + ", " + this.y + ")";
+//    }
+//}
 
-   public Vector2(int x, int y)
-   {
-       this.x = x;
-       this.y = y;
-   }
-
-   public static Vector2 operator +(Vector2 v1, Vector2 v2) 
-   {
-       return new Vector2(v1.x + v2.x, v1.y + v2.y);
-   }
-
-   public static Vector2 operator -(Vector2 v1, Vector2 v2) 
-   {
-       return new Vector2(v1.x - v2.x, v1.y - v2.y);
-   }
-
-   public static Vector2 operator *(Vector2 v1, int c) 
-   {
-       return new Vector2(v1.x * c, v1.y * c);
-   }
-
-   public static Vector2 operator *(int c, Vector2 v1) 
-   {
-       return new Vector2(v1.x * c, v1.y * c);
-   }
-
-   public static bool operator ==(Vector2 v1, Vector2 v2) 
-   {
-       if ((System.Object)v2 == null)
-       {
-           return (System.Object)v1 == null;
-       }
-       return (v1.x == v2.x) && (v1.y == v2.y);
-   }
-
-   public static bool operator !=(Vector2 v1, Vector2 v2) 
-   { 
-       return !(v1 == v2);
-   }
-
-   public string ToString()
-   {
-       return "(" + this.x + ", " + this.y + ")";
-   }
-}
-
-//Something we need in order for Vector2 to work
-public class vecComp : IEqualityComparer<Vector2>
-{
-   public int GetHashCode(Vector2 v)
-   {
-       return v.x * 10 + v.y;
-   }
-
-   public bool Equals(Vector2 v1, Vector2 v2)
-   {
-       return v1 == v2;
-   }
-}
+// Something we need in order for Vector2 to work
+//public class vecComp : IEqualityComparer<Vector2>
+//{
+//    public int GetHashCode(Vector2 v)
+//    {
+//        return v.x * 10 + v.y;
+//    }
+//
+//    public bool Equals(Vector2 v1, Vector2 v2)
+//    {
+//        return v1 == v2;
+//    }
+//}
 
 public class attack_t
 {
@@ -181,9 +181,9 @@ public class action_t
     public Vector2 target;
     public int wpnId;
 
-    public action_t()
+    public action_t(Vector2 movement)
     {
-        this.movement = Vector2.zero;
+        this.movement = movement;
         this.spMovement = Vector2.zero;
         this.target = Vector2.zero;
         this.attack = new attack_t(Vector2.zero);
@@ -197,7 +197,7 @@ public static class game_t
     // Execute one time step at a time until both players run out of actions, 
     // then execute end_turn.
     // The input comes from user input
-    public static void execute_turn(board_t board, List<List<action_t>> actions)
+    public static void execute_turn(board_t board, List<Stack<action_t>> actions)
     {
         int playerCount = board.playerCount;
         List<player_t> players = board.get_players();
@@ -236,92 +236,67 @@ public static class game_t
         
     static List<Vector2>[,] execute_step(board_t board)
     // Execute one time step of the game.  
-    // Get an action from each unit;
-    // all units fire their weapons;
-    // move the units and deal with solid collisions recursively. 
+    // Pop off an action from each player;
+    // all players fire their weapons;
+    // move the players and deal with solid collisions recursively. 
     // Calls update board when finished.
     {
-        List<unit_t> units = board.get_units();
-        int unitCount = units.Count;
-        Vector2[] spvs = new Vector2[unitCount];
-        Vector2[] vs = new Vector2[unitCount];
-        List<Vector2>[,] result = new List<Vector2>[unitCount,2];
+        int playerCount = board.playerCount;
+        List<player_t> players = board.get_players();
+        Vector2[] spvs = new Vector2[playerCount];
+        Vector2[] vs = new Vector2[playerCount];
+        List<Vector2>[,] result = new List<Vector2>[playerCount,2];
         // Calculate special and normal movements separately
         // with the same helper
-        for (int i = 0; i < unitCount; i++)
+        for (int i = 0; i < playerCount; i++)
         {
-            action_t action = units[i].pop_action();
+            action_t action = players[i].pop_action();
             spvs[i] = action.spMovement;
             vs[i] = action.movement;
             // Every player fire their weapons
             // Note that some weapons aren't "fired" in here
             // They just gets turned on and continue to take effect
-            // TODO: Technically you move first and then attack
-            units[i].attack(action.attack, action.wpnId, board);
+            players[i].attack(action.attack, action.wpnId, board);
         }
         // Move the players
         SS.dbg_log("Doing special movement...");
-        List<Vector2>[] spMovements = move_units(board, units, spvs);
+        List<Vector2>[] spMovements = move_players(board, players, spvs);
         SS.dbg_log("Doing normal movement...");
-        List<Vector2>[] movements = move_units(board, units, vs);
-        for (int i = 0; i < unitCount; i++)
+        List<Vector2>[] movements = move_players(board, players, vs);
+        for (int i = 0; i < playerCount; i++)
         {
             result[i,0] = spMovements[i];
             result[i,1] = movements[i];
         }
         // Update the board, deal with collisions
         // This is also where all the objects gets updated
-        step_update(board);
+        board.step_update();
         return result;
     }
 
-    // This is where time moves forward 1 step
-    // Lots of things can be happening at the same time
-    // So the order of the function calls is extremely important
-    static void step_update(board_t board)
-    {
-        board.step_update();
-        // Remove all the things that ran out of steplife
-        board.empty_object_lists();
-        // Note that sometimes damage objects are created in the update function
-        // So it is necessary that update_damage comes after the update.
-        board.update_damage();
-        // Every time when new damage is generated
-        // We repeat the process of checking collision 
-        // and maybe creating more damage
-        // Think of a chain explosion of oil cans or something
-        bool dmgGenerated = true;
-        while (dmgGenerated)
-        {
-            board.check_collisions();
-            board.remove_destroyed();
-            dmgGenerated = board.empty_object_lists();
-        }  
-    }
-
-    static List<Vector2>[] move_units(board_t board,
-        List<unit_t> units, Vector2[] vs)
-    // Move the units around with vs as their initial velocities
+    static List<Vector2>[] move_players(board_t board,
+        List<player_t> players, Vector2[] vs)
+    // Move the players around with vs as their initial velocities
     // This is more complicated than it seems
     // Since we have to take care of collisions in a sensible and fun way
-    // For two and potentially more units
+    // For two and potentially more players
     {
-        int unitCount = units.Count;
-        List<Vector2>[] result = new List<Vector2>[unitCount];
+        int playerCount = board.playerCount;
+        List<Vector2>[] result = new List<Vector2>[playerCount];
         // A map from positions on the board to a list of player indices
-        Dictionary<Vector2, List<int>> posToUnit = 
-            new Dictionary<Vector2, List<int>>(new vecComp());
+        Dictionary<Vector2, List<int>> posToPlayer = 
+            new Dictionary<Vector2, List<int>>();
         bool isMoving = true;
-        // Temporarily remove all units from the board
-        for (int i = 0; i < unitCount; i++)
+        // Temporarily remove all players from the board
+        for (int i = 0; i < playerCount; i++)
         {
-            board.remove_object(units[i]);
+            board.remove_object(players[i]);
         }
         while(isMoving)
         {
-            posToUnit.Clear();
+            posToPlayer.Clear();
             // Add all the velocities to the result
-            for (int i = 0; i < unitCount; i++)
+            for (int i = 0; i < playerCount; i++)
             {
                 if (result[i] == null)
                 {
@@ -335,13 +310,13 @@ public static class game_t
                     result[i].Add(vs[i]);
                 }
             }
-            // First check for special case where two units switch positions
-            for (int i = 0; i < unitCount; i++)
+            // First check for special case where two players switch positions
+            for (int i = 0; i < playerCount; i++)
             {
-                for (int j = i + 1; j < unitCount; j++)
+                for (int j = i + 1; j < playerCount; j++)
                 {
-                    Vector2 pos1 = units[i].get_pos();
-                    Vector2 pos2 = units[j].get_pos();
+                    Vector2 pos1 = players[i].get_pos();
+                    Vector2 pos2 = players[j].get_pos();
                     Vector2 v1 = vs[i];
                     Vector2 v2 = vs[j];
                     if ((pos1 + v1 == pos2) && (pos2 + v2 == pos1))
@@ -358,32 +333,32 @@ public static class game_t
             }
             // Build the map from position to player
             // We have to assume that the original positions
-            // don't have two stationary units
+            // don't have two stationary players
             // occupying the same tile
             // Since that may generate a infinite loop and 
             // cause the game to crash
-            for (int i = 0; i < unitCount; i++)
+            for (int i = 0; i < playerCount; i++)
             {
                 Vector2 pos;
-                pos = units[i].get_pos();
+                pos = players[i].get_pos();
                 pos += vs[i];
-                if (posToUnit.ContainsKey(pos))
+                if (posToPlayer.ContainsKey(pos))
                 {
-                    posToUnit[pos].Add(i);
+                    posToPlayer[pos].Add(i);
                 }
                 else
                 {
                     List<int> newValue = new List<int>();
                     newValue.Add(i);
-                    posToUnit.Add(pos, newValue);
+                    posToPlayer.Add(pos, newValue);
                 }
                 // Record the new position in the player object
-                units[i].set_pos(pos);
+                players[i].set_pos(pos);
             }
             // Solve for the velocities in the next round of collision checking
-            foreach (Vector2 pos in posToUnit.Keys)
+            foreach (Vector2 pos in posToPlayer.Keys)
             {
-                List<int> pIds = posToUnit[pos];
+                List<int> pIds = posToPlayer[pos];
                 System.Diagnostics.Debug.Assert(pIds != null);
                 System.Diagnostics.Debug.Assert(pIds.Count != 0);
                 if (pIds.Count == 1)
@@ -404,11 +379,11 @@ public static class game_t
                     }
                 }
                 else if (pIds.Count == 2)
-                // Special case: if there are exactly two units,
+                // Special case: if there are exactly two players,
                 // and one is stationary, the moving one will nudge the other
                 // away.
                 {
-                    SS.dbg_log("2 units at position");
+                    SS.dbg_log("2 players at position");
                     int pId1 = pIds[0];
                     int pId2 = pIds[1];
                     if (vs[pId1] == Vector2.zero)
@@ -433,7 +408,7 @@ public static class game_t
                 }
                 else
                 {
-                    SS.dbg_log("Multiple units at position");
+                    SS.dbg_log("Multiple players at position");
                     // All of the movements are invalid
                     foreach(int pId in pIds)
                     {
@@ -441,9 +416,9 @@ public static class game_t
                     }
                 }
             }
-            // Check if any one of the units is still moving
+            // Check if any one of the players is still moving
             isMoving = false;
-            for(int i = 0; i < unitCount; i++)
+            for(int i = 0; i < playerCount; i++)
             {
                 if (vs[i] != Vector2.zero)
                 {
@@ -452,12 +427,12 @@ public static class game_t
                 }
             }
         }
-        // Put all units back to the board
-        for (int i = 0; i < unitCount; i++)
+        // Put all players back to the board
+        for (int i = 0; i < playerCount; i++)
         {
-            Vector2 pos = units[i].get_pos();
+            Vector2 pos = players[i].get_pos();
             System.Diagnostics.Debug.Assert(board.is_free(pos));
-            board.put_object(pos, units[i]);
+            board.put_object(pos, players[i]);
         }
         return result;
     }
@@ -468,11 +443,10 @@ public static class game_t
     {
         if (SS.DBG) Console.WriteLine("End of turn...");
         // First generate all end-of-turn damage
+        board.step_update();
         board.clear_pending_damage();
-        // Some special weapons generate dmg at every step including eot
-        // So we have to step_update as well
-        step_update(board);
         board.print_board();
+        board.step_update();
         // Attempt to move the players again
         // since there might be blast wave effects that pushes players around
         while(!turn_finished(board.get_players()))
@@ -481,11 +455,7 @@ public static class game_t
             execute_step(board);
             board.print_board();
         }
-        if (SS.DBG) Console.WriteLine("Turn ended!");
-        board.turn_update();
-        // Many objects destory themselves at end of turn!
-        board.empty_object_lists();
-        board.print_board();
+       board.turn_update();
     }
 } 
 
@@ -593,12 +563,11 @@ public class board_t
         }
     }
 
-    public object_t get_blocked(Vector2 pos1, Vector2 pos2)
-    // Returns the first solid object that blocks the ray from pos1 to pos2,
-    // NOT counting the objects at pos1 or pos2
+    object_t get_blocked(Vector2 pos1, Vector2 pos2)
+    // Returns the first solid object that blocks the ray from pos1 to pos2. 
     // Returns null if no such objects exist.
-    // TODO: Implement this!
     {
+        System.Diagnostics.Debug.Assert(false);
         return null;
     }
 
@@ -682,6 +651,12 @@ public class board_t
         {
             obj.step_update(this);
         }
+        // Note that sometimes damage objects are created in the update function
+        // So it is necessary that update_damage comes after the update.
+        this.update_damage();
+        this.check_collisions();
+        this.remove_destroyed();
+        this.empty_remove_list();
     }
 
     public void remove_destroyed()
@@ -690,15 +665,12 @@ public class board_t
     {
         foreach (object_t obj in this.objects)
         {
-            if (obj is unit_t && obj.exists)
+            if (obj is unit_t)
             {
                 // Cast the object into a unit object
                 unit_t unit = obj as unit_t;
                 if (unit.get_hp() <= 0)
                 {
-                    // Testing only
-                    // If one player dies, exit the program
-                    if (unit is player_t) Debug.Assert(false);
                     unit.on_destroyed(this);
                     // Add the unit object to the to remove list
                     remove_later(unit);
@@ -716,28 +688,24 @@ public class board_t
         {
             obj.end_turn(this);
         }
+        // Many objects destory themselves at end of turn!
+        empty_object_list();
     }
 
-    public bool empty_object_lists()
+    void empty_object_list()
     // Empty toRemove and remove every object in it from the board
-    // Returns true if any damage is generated
     {
-        // Remove objects
         foreach(object_t obj in objsToRemove)
         {
             this.remove_object(obj);
         }
         objsToRemove.Clear();
-        // Put objects
-        bool dmgGenerated = false;
         for(int i = 0; i < objsToPut.Count; i++)
         {
             this.put_object(posToPut[i], objsToPut[i]);
-            if (objsToPut[i] is damage_t) dmgGenerated = true;
         }
         objsToPut.Clear();
         posToPut.Clear();
-        return dmgGenerated;
     }
 
     public void clear_pending_damage()
@@ -751,6 +719,8 @@ public class board_t
         {
             // It has to be end-of-turn damage
             //System.Diagnostics.Debug.Assert(dmg.delay < 0);
+            // TODO: Later we should add a condition here
+            // Specifically to implement the homing missile (or something...)
             if (true){
                 put_object(dmg.get_pos(), dmg);
                 toRemove.Add(dmg);
@@ -763,7 +733,7 @@ public class board_t
         }
     }
 
-    public void update_damage()
+    void update_damage()
     // Generate damage objects scheduled for the time step.
     // Does not call update on the damage objects
     {
@@ -799,7 +769,7 @@ public class board_t
         return false;
     }
 
-    public void check_collisions()
+    void check_collisions()
     // Update the board, check collisions for all objects on the board.
     // This only works when one of the two objects is solid
     // The merging of damage/energy is a special case
@@ -841,12 +811,6 @@ public class board_t
         // Sort the players by playerId
         players.Sort((x, y) => x.playerId.CompareTo(y.playerId));
         return players;
-    }
-
-    public List<unit_t> get_units()
-    //Returns a list of units ordered arbitrarily.
-    {
-        return objects.FindAll(x => x is unit_t).ConvertAll<unit_t>(x => x as unit_t);
     }
 
     public void print_board()
@@ -930,9 +894,8 @@ public class object_t
     public bool exists = true;
     public string name;
     public bool solid;
-    // An object by default lives forever
-    public int stepLife = -1;
-    public int turnLife = -1;
+    public int stepLife;
+    public int turnLife;
     // Position is too important to be public
     Vector2 position;
 
@@ -997,10 +960,7 @@ public class object_t
 public class unit_t : object_t
 {
     int hp;
-    // protected = only visible to classes that inherit this, 
-    // but not to the outside world
-    protected List<action_t> actions = new List<action_t>();
-    protected List<weapon_t> weapons = new List<weapon_t>();
+    public List<weapon_t> weapons = new List<weapon_t>();
 
     public unit_t(string name, int hp):base(name, solid:true)
     {
@@ -1034,9 +994,8 @@ public class unit_t : object_t
     // Take damage specified by amount. 
     // Returns false if the unit is destroyed.
     {
-        Console.WriteLine(this.name + " takes " + amount.ToString() + " damage!");
+        SS.dbg_log(this.name + " takes " + amount.ToString() + " damage!");
         this.hp -= amount;
-        Console.WriteLine(this.name + " has " + this.hp.ToString() + " hp!");
         return this.hp > 0;
     }
 
@@ -1050,24 +1009,6 @@ public class unit_t : object_t
     {
         return hp;
     }
-
-    public virtual action_t pop_action()
-    // Removes and returns an action from the action LIST of the unit
-    {
-        System.Diagnostics.Debug.Assert(actions != null);
-        int len = actions.Count;
-        if (len == 0)
-        {
-            SS.dbg_log("No actions left!");
-            return new action_t();
-        }
-        else
-        {
-            action_t result = actions[len - 1];
-            actions.RemoveAt(len - 1);
-            return result;
-        }
-    }
 }
 
 public class player_t : unit_t
@@ -1077,6 +1018,7 @@ public class player_t : unit_t
     // This is the id given at the start of game which is unique for each player 
     // and identical across clients.
     public int playerId;
+    Stack<action_t> actions;
     int[] upgrades;
     // The free weapon modules the player now has
     // 0 momentum 1 explosive 2 particle 3 field 4 overheated particle
@@ -1086,6 +1028,7 @@ public class player_t : unit_t
 
     public player_t():base(name:"Player", hp:starting_hp)
     {
+        actions = new Stack<action_t>();
         // Temporary
         // TODO: Change this
         this.weapons.Add(new blaster_t());
@@ -1095,6 +1038,22 @@ public class player_t : unit_t
     //Call refresh() on all of the weapons.
     {
         System.Diagnostics.Debug.Assert(false);
+    }
+
+    public action_t pop_action()
+    // Pop an element off the stack and return it. 
+    // If the stack is empty then return an action with stationary movement.
+    {
+        System.Diagnostics.Debug.Assert(actions != null);
+        if (actions.Count == 0)
+        {
+            SS.dbg_log("No actions left!");
+            return new action_t(Vector2.zero);
+        }
+        else
+        {
+            return actions.Pop();
+        }
     }
 
     public bool no_moves_left()
@@ -1134,21 +1093,22 @@ public class player_t : unit_t
             modules[i] -= weapon.modules[i];
         }
         // Add the weapon to the list
+        // TODO: This should actually be a copy
         this.weapons.Add(weapon);
         return true;
     }
 
-    public void set_actions(List<action_t> actions)
+    public void set_actions(Stack<action_t> actions)
     // Set the action stack of the player to be actions.
     {
         this.actions = actions;
     }
 
-    public void add_action(action_t action)
-    // Add action onto the action list
+    public void push_action(action_t action)
+    // Push action onto the action stack
     // Should only be called by a blast_wave_t object
     {
-        this.actions.Add(action);
+        this.actions.Push(action);
     }
 }
 
@@ -1157,74 +1117,7 @@ public class turret_t : unit_t
     const int hp = 10;
     int reward;
     weapon_t weapon;
-
-    public turret_t():base("Turret", hp)
-    {
-        // The turretGun is a weakened version of the blaster
-        weapon = new turretGun_t();
-        this.weapons.Add(weapon);
-    }
-
-    public override void end_turn(board_t board)
-    // At the end of turn, the turret locks onto the nearest player
-    // And fires its weapon at a random position 
-    // within distance 1 of that player
-    {
-        List<player_t> players = board.get_players();
-        // A flag varible indicating if any player is in range
-        bool playerInRange = false;
-        int bestDistance = 0;
-        int playersInTie = 0;
-        Vector2 bestPos = Vector2.zero;
-        Vector2 pos = this.get_pos();
-        Vector2 playerPos;
-        foreach (player_t player in players)
-        {
-            playerPos = player.get_pos();
-            if (weapon.is_in_range(pos, playerPos, this, board))
-            {
-                int distance = SS.distance(pos, playerPos);
-                if (playerInRange)
-                {
-                    if (distance < bestDistance)
-                    {
-                        bestDistance = distance;
-                        bestPos = playerPos;
-                        playersInTie = 0;
-                    }
-                    else if (distance == bestDistance)
-                    {
-                        // Since random.shuffle doesn't exist in C#
-                        // we have to do some smart random things
-                        // to make sure each player get targeted 
-                        // with the same probability
-                        playersInTie += 1;
-                        System.Random rnd = new System.Random();
-                        int randNum = rnd.Next(playersInTie);
-                        if (randNum == 0)
-                        {
-                            bestDistance = distance;
-                            bestPos = playerPos;
-                        }
-                    }
-                }
-                else
-                {
-                    bestDistance = distance;
-                    bestPos = playerPos;
-                    playerInRange = true;
-                }
-            }
-        }
-        if (playerInRange)
-        {
-            action_t action = new action_t();
-            action.attack = new attack_t(bestPos);
-            action.wpnId = 0;
-            actions.Insert(0, action); 
-        }
-        
-    }
+    public turret_t():base("Turret", hp){}
 }
 
 public class damage_t : object_t
@@ -1270,9 +1163,8 @@ public class blastWave_t : damage_t
         if (other is player_t)
         {
             player_t player = other as player_t;
-            action_t action = new action_t();
-            action.movement = direction;
-            player.add_action(action);
+            action_t action = new action_t(direction);
+            player.push_action(action);
         }
     }
 }
@@ -1341,7 +1233,7 @@ public class weapon_t
     {
         System.Diagnostics.Debug.Assert(inputMode == inputMode_t.ATTACK);
         tileMode_t result = new tileMode_t();
-        if (!is_in_range(playerPos, tilePos, master, board))
+        if (!is_in_range(playerPos, tilePos, master))
         {
             result.isOutOfRange = true;
         }
@@ -1353,12 +1245,12 @@ public class weapon_t
     }
 
     public virtual bool is_in_range(Vector2 playerPos, Vector2 targetPos,
-        unit_t master, board_t board)
+        unit_t master)
     // Returns true if targetPos is within attack range from playerPos
+    // Ignoring obstacles.
     {
         int d = SS.distance(playerPos, targetPos);
-        return (d > 0) && (d <= get_range(master)) 
-            && board.get_blocked(playerPos, targetPos) == null;
+        return (d > 0) && (d <= get_range(master));
     }
 
     public virtual int get_range(unit_t master)
@@ -1408,14 +1300,6 @@ public class blaster_t : weapon_t
 {
     static int[] modules = {2, 0, 0, 0};
     public blaster_t():base(range:5, damage:5, delay:1, modules:modules)
-    {}
-}
-
-// A variation of the blaster that the turrets use
-public class turretGun_t : weapon_t
-{
-    static int[] modules = {100, 100, 100, 100};
-    public turretGun_t():base(range:4, damage:5, delay:1, modules:modules)
     {}
 }
 

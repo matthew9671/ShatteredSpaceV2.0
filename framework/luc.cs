@@ -20,9 +20,9 @@ public class luTest
         player.build_weapon(new clusterBomb_t());
         // This is a sample test
         // Write your own test with this as a template
-        List<Stack<action_t>> input = new List<Stack<action_t>>();
-        // Generate the action stack for player1
-        Stack<action_t> actions = new Stack<action_t>();
+        List<List<action_t>> input = new List<List<action_t>>();
+        // Generate the action List for player1
+        List<action_t> actions = new List<action_t>();
         // Generate one action
         // #############################
         action_t action1 = new action_t();
@@ -30,53 +30,53 @@ public class luTest
         action1.movement = Vector2.zero;
         action1.wpnId = 1;
         action1.attack = new attack_t(new Vector2(2, 2));
-        actions.Push(action1);
+        actions.Add(action1);
 
         // #############################
         input.Add(actions);
-        // Generate the action stack for player2
-        actions = new Stack<action_t>();
+        // Generate the action List for player2
+        actions = new List<action_t>();
         // #############################
         // action = new action_t();
         // action.spMovement = Vector2.zero;
         // action.movement = Vector2.zero;
         // action.wpnId = -1;
-        // actions.Push(action);
+        // actions.Add(action);
         // #############################
         input.Add(actions);
         Console.WriteLine("Testing cluster bomb...");
         game_t.execute_turn(board, input);
 
-        input = new List<Stack<action_t>>();
-        // Generate the action stack for player1
-        actions = new Stack<action_t>();
+        input = new List<List<action_t>>();
+        // Generate the action List for player1
+        actions = new List<action_t>();
         // Generate one action
         // #############################
         action1 = new action_t();
         action1.spMovement = Vector2.zero;
         action1.movement = Vector2.zero;
         action1.wpnId = -1;
-        actions.Push(action1);
+        actions.Add(action1);
         action1 = new action_t();
         action1.spMovement = Vector2.zero;
         action1.movement = Vector2.zero;
         action1.wpnId = -1;
-        actions.Push(action1);
+        actions.Add(action1);
         action1 = new action_t();
         action1.spMovement = Vector2.zero;
         action1.movement = Vector2.zero;
         action1.wpnId = -1;
-        actions.Push(action1);
+        actions.Add(action1);
         // #############################
         input.Add(actions);
-        // Generate the action stack for player2
-        actions = new Stack<action_t>();
+        // Generate the action List for player2
+        actions = new List<action_t>();
         // #############################
         // action = new action_t();
         // action.spMovement = Vector2.zero;
         // action.movement = Vector2.zero;
         // action.wpnId = -1;
-        // actions.Push(action);
+        // actions.Add(action);
         // #############################
         input.Add(actions);
         game_t.execute_turn(board, input);

@@ -17,9 +17,9 @@ public class ryanTest
     {
         // This is a sample test
         // Write your own test with this as a template
-        List<Stack<action_t>> input = new List<Stack<action_t>>();
-        // Generate the action stack for player1
-        Stack<action_t> actions = new Stack<action_t>();
+        List<List<action_t>> input = new List<List<action_t>>();
+        // Generate the action List for player1
+        List<action_t> actions = new List<action_t>();
         board_t board = new board_t(0, 2);
         player_t player1 = board.get_players()[0];
         player_t player2 = board.get_players()[1];
@@ -32,7 +32,7 @@ public class ryanTest
         action.movement = new Vector2(-1, 1);
         action.wpnId = -1;
         action.attack = null;
-        actions.Push(action);
+        actions.Add(action);
         // #############################
         // Attack the other player
         action = new action_t();
@@ -40,17 +40,17 @@ public class ryanTest
         action.movement = Vector2.zero;
         action.wpnId = 1;
         action.attack = new trackingMineAttack_t(player2);
-        actions.Push(action);
+        actions.Add(action);
         // #############################
         input.Add(actions);
-        // Generate the action stack for player2
-        actions = new Stack<action_t>();
+        // Generate the action List for player2
+        actions = new List<action_t>();
         // #############################
         action = new action_t();
         action.spMovement = Vector2.zero;
         action.movement = Vector2.zero;
         action.wpnId = -1;
-        actions.Push(action);
+        actions.Add(action);
         // #############################
         input.Add(actions);
         Console.WriteLine("Testing tracking mine...");
@@ -58,10 +58,10 @@ public class ryanTest
         // Second turn
         // Two players just wait
         // #############################
-        input = new List<Stack<action_t>>();
+        input = new List<List<action_t>>();
         int numSteps = 5;
-        // Generate the action stack for player1
-        actions = new Stack<action_t>();
+        // Generate the action List for player1
+        actions = new List<action_t>();
         for (int i = 0; i < numSteps; i++)
         {
             // #############################
@@ -70,11 +70,11 @@ public class ryanTest
             action.spMovement = Vector2.zero;
             action.movement = Vector2.zero;
             action.wpnId = -1;
-            actions.Push(action);
+            actions.Add(action);
         }
         input.Add(actions);
-        // Generate the action stack for player2
-        actions = new Stack<action_t>();
+        // Generate the action List for player2
+        actions = new List<action_t>();
         for (int i = 0; i < numSteps; i++)
         {
             // #############################
@@ -84,7 +84,7 @@ public class ryanTest
             action.movement = Vector2.zero;
             action.wpnId = 0;
             action.attack = new attack_t(new Vector2(2, 0));
-            actions.Push(action);
+            actions.Add(action);
         }
         input.Add(actions);
         game_t.execute_turn(board, input);

@@ -18,9 +18,9 @@ public class wenquanTest
         board_t board = new board_t(0, 2);
         player_t player = board.get_players()[0];
         player.build_weapon(new forceBarrier_t());
-        List<Stack<action_t>> input = new List<Stack<action_t>>();
-        // Generate the action stack for player1
-        Stack<action_t> actions = new Stack<action_t>();
+        List<List<action_t>> input = new List<List<action_t>>();
+        // Generate the action List for player1
+        List<action_t> actions = new List<action_t>();
         // Generate one action
         // #############################
         action_t action = new action_t();
@@ -29,33 +29,33 @@ public class wenquanTest
         action.wpnId = 1;
         action.attack = new doubleAttack_t(new Vector2(4, 0),
         								   new Vector2(5, 0));
-        actions.Push(action);
+        actions.Add(action);
         action_t action2 = new action_t();
         action2.spMovement = Vector2.zero;
         action2.movement = new Vector2(1, 0);
         action2.wpnId = 1;
         action2.attack = new doubleAttack_t(new Vector2(6, 6),
         								   new Vector2(-6, -6));
-        actions.Push(action2);
+        actions.Add(action2);
         
         // #############################
         input.Add(actions);
-        // Generate the action stack for player2
-        actions = new Stack<action_t>();
+        // Generate the action List for player2
+        actions = new List<action_t>();
         // #############################
         action = new action_t();
         action.spMovement = Vector2.zero;
         action.movement = Vector2.zero;
         action.wpnId = -1;
         action.movement = new Vector2(1,0);
-        actions.Push(action);
+        actions.Add(action);
         action2 = new action_t();
         action2.spMovement = Vector2.zero;
         action2.movement = new Vector2(1, 0);
         action2.wpnId = 1;
         //action2.attack = new doubleAttack_t(new Vector2(4, -3),
         //								   new Vector2(5, 0));
-        actions.Push(action2);
+        actions.Add(action2);
         // #############################
         input.Add(actions);
         Console.WriteLine("Testing force barrier...");
@@ -64,42 +64,42 @@ public class wenquanTest
         
         //################## 
         //TURN 2
-        input = new List<Stack<action_t>>();
-        actions = new Stack<action_t>();
+        input = new List<List<action_t>>();
+        actions = new List<action_t>();
         action = new action_t();
         action.spMovement = Vector2.zero;
         action.movement = new Vector2(0, 0);
         action.wpnId = -1;
-        actions.Push(action);
+        actions.Add(action);
         input.Add(actions);
         //############ player2
-        actions = new Stack<action_t>();
+        actions = new List<action_t>();
         action = new action_t();
         action.spMovement = Vector2.zero;
         action.movement = new Vector2(0, 0);
         action.wpnId = -1;
-        actions.Push(action);
+        actions.Add(action);
         input.Add(actions);
         Console.WriteLine("TURN 2");
         game_t.execute_turn(board, input);
         Console.WriteLine("...Passed!");
         //################## 
         //TURN 3
-        input = new List<Stack<action_t>>();
-        actions = new Stack<action_t>();
+        input = new List<List<action_t>>();
+        actions = new List<action_t>();
         action = new action_t();
         action.spMovement = Vector2.zero;
         action.movement = new Vector2(-1, 0);
         action.wpnId = -1;
-        actions.Push(action);
+        actions.Add(action);
         input.Add(actions);
         //############ player2
-        actions = new Stack<action_t>();
+        actions = new List<action_t>();
         action = new action_t();
         action.spMovement = Vector2.zero;
         action.movement = new Vector2(0, 0);
         action.wpnId = -1;
-        actions.Push(action);
+        actions.Add(action);
         input.Add(actions);
         Console.WriteLine("TURN 3");
         game_t.execute_turn(board, input);
@@ -107,22 +107,22 @@ public class wenquanTest
 
         //################## 
         //TURN 4 blaster
-        input = new List<Stack<action_t>>();
-        actions = new Stack<action_t>();
+        input = new List<List<action_t>>();
+        actions = new List<action_t>();
         action = new action_t();
         action.spMovement = Vector2.zero;
         action.movement = new Vector2(0, 0);
         action.wpnId = 0;
         action.attack = new attack_t(new Vector2(4,0));
-        actions.Push(action);
+        actions.Add(action);
         input.Add(actions);
         //############ player2
-        actions = new Stack<action_t>();
+        actions = new List<action_t>();
         action = new action_t();
         action.spMovement = Vector2.zero;
         action.movement = new Vector2(0, 0);
         action.wpnId = -1;
-        actions.Push(action);
+        actions.Add(action);
         input.Add(actions);
         Console.WriteLine("TURN 4 blaster");
         game_t.execute_turn(board, input);
@@ -157,8 +157,6 @@ public class barrier_t : unit_t
 		base.end_turn(board);
 		if (!this.exists && !board.is_free(this.get_pos())) 
 		{
-			Console.Write(this.get_pos().ToString());
-			Console.Write("Self-destruct!");
 			board.remove_later(this);
 		}
 		this.exists = true;
