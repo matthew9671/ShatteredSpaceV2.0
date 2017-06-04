@@ -1,7 +1,3 @@
-// Shi Wenze's version of the gameManager_t
-// Will eventually be combined with others' versions
-// This would only work in Unity
-
 // #############################################################################
 // ###########
 // ##READ ME##
@@ -190,6 +186,9 @@ public class gameManager_t : MonoBehaviour
 	//http://answers.unity3d.com/questions/323195/how-can-i-have-a-static-class-i-can-access-from-an.html
 	public static gameManager_t GM;
 
+	// The playerId of the player on this client
+	// Set to 0 for convenience of testing
+	public int playerId = 0;
     // Input is a component in the action: weaponId, attack, movement or spMovement
     // inputMode tells us which kind of input we want from the user right now
     // This line is commented out because it is defined in game.cs
@@ -199,8 +198,9 @@ public class gameManager_t : MonoBehaviour
     public int playerCount = 2;
     public tile_t[,] tiles;
     public board_t board;
-    public board_t tempBoard;
+	public Stack<board_t> tempBoards = new Stack<board_t>();
     public weapon_t weapon;
+	public GameObject playerModel;
     // The player is also a temporary duplicate
     public player_t tempPlayer;
     // The position of the TILE that the mouse is currently on
@@ -211,10 +211,12 @@ public class gameManager_t : MonoBehaviour
     // The action stack of the player we are generating
     public Stack<action_t> actions;
 	// The spacing of the gameTiles
-	public int spacing = 1;
+	public float spacing = 1f;
 	// Prefabs linked in unity editor
 	public GameObject gameTile;
 	public GameObject playerPrefab;
+    // UI stuff linked in unity editor
+    public List<Button> playerBtns;
 
 	// For testing
 	Text output;
@@ -224,6 +226,7 @@ public class gameManager_t : MonoBehaviour
 	// This gets called every real-time step so that 
 	// everyone plays the animation for the next step
 	public event Action stepAnimation;
+	public Stack<List<animController_t>> animControllers = new Stack<List<animController_t>>();
 
 	// Black magic
 	void Awake()
@@ -263,12 +266,15 @@ public class gameManager_t : MonoBehaviour
 	{
 		if (wpnId != -1) {
 			weapon = tempPlayer.weapons [wpnId];
+            set_mode (inputMode_t.ATTACK);
 		} 
 		else 
 		{
 			weapon = null;
+            set_mode (inputMode_t.MOVE);
 		}
 		action.wpnId = wpnId;
+        update_tiles ();
 	}
 
     public void set_mouse_position(Vector2 pos)
@@ -303,12 +309,16 @@ public class gameManager_t : MonoBehaviour
 		}
         // Generate objects on the physical board
         List<player_t> players = board.get_players();
+		List<animController_t> animCtrlList = new List<animController_t> ();
         foreach (player_t player in players)
         {
             GameObject instance = GameObject.Instantiate 
                 (playerPrefab, SS.board_to_world(player.get_pos()), Quaternion.identity) as GameObject;
-            player.gameObject = instance;  
+			animController_t aCtrl = instance.AddComponent<animController_t> ();
+			player.objectId = animCtrlList.Count;
+			animCtrlList.Add (aCtrl);
         }
+		animControllers.Push (animCtrlList);
 		init_planning ();
     }
 
@@ -318,8 +328,9 @@ public class gameManager_t : MonoBehaviour
     // removes the opponent from the temporary board
     {
         // Get the copy of the board that has only one player
-		tempBoard = board_t.solo_copy(board);
-        tempPlayer = tempBoard.get_players()[0];
+		board_t tempBoard = objectCopier.clone<board_t>(board);
+		tempBoards.Push (tempBoard);
+        tempPlayer = tempBoard.get_players()[playerId];
 		tempPlayer.build_weapon (new shockCannon_t ());
         // Planning always starts with choosing a weapon
         inputMode = inputMode_t.WEAPON;
@@ -358,6 +369,42 @@ public class gameManager_t : MonoBehaviour
 				}
 			}
 		}
+        // Also updates the player menu
+        int numBtns = playerBtns.Count;
+        for (int i = 0; i < numBtns; i++)
+        {
+            if (inputMode == inputMode_t.WEAPON)
+            {
+                if (i < numBtns - 1)
+                {
+					weapon_t weapon = tempPlayer.get_weapon (i);
+					if (weapon == null)
+                    {
+						playerBtns[i].interactable = false;
+                    }
+                    else
+                    {
+						if (weapon.can_be_fired()) 
+						{
+							playerBtns[i].interactable = true;
+						} 
+						else 
+						{
+							playerBtns[i].interactable = false;
+						}
+                    } 
+                }
+                else
+                {
+                    // The last button is the "no attack" button
+                    playerBtns[i].interactable = true;
+                }
+            }
+            else
+            {
+                playerBtns[i].interactable = false;
+            }
+        }
     }
 
     tileMode_t get_tile_mode(Vector2 tilePos, Vector2 playerPos)
@@ -374,6 +421,7 @@ public class gameManager_t : MonoBehaviour
         // In addition to the steps above, we also need to set the isDangerous and stepsToDamage
         // by consulting tempBoard
 		tileMode_t tile = new tileMode_t();
+		board_t tempBoard = tempBoards.Peek ();
 		if (inputMode == inputMode_t.WEAPON){
 			tile.isOutOfRange = true;
 			tile.isValidMove = false;
@@ -444,6 +492,26 @@ public class gameManager_t : MonoBehaviour
 			Vector2 diff = mousePos - tempPlayer.get_pos (); 
 			action = new action_t ();
 			action.movement = diff;
+			tempPlayer.add_action (action);
+
+			// Copy the virtual board
+			board_t newTempBoard = objectCopier.clone (tempBoards.Peek ());
+			// As well as the physical one
+			List<animController_t> animCtrlList = animControllers.Peek();
+			List<animController_t> newAnimCtrlList = new List<animController_t> ();
+			for (int i = 0; i < animCtrlList.Count; i++) 
+			{
+				GameObject copy = GameObject.Instantiate (animCtrlList [i].gameObject) as GameObject;
+				animCtrlList[i].gameObject.SetActive (false);
+				newAnimCtrlList.Add(copy.GetComponent<animController_t>());
+			}
+			animControllers.Push (newAnimCtrlList);
+
+			tempPlayer = newTempBoard.get_players () [playerId];
+			// Execute a step of the copy of the game
+			game_t.execute_step (newTempBoard);
+//			stepAnimation ();
+			tempBoards.Push (newTempBoard);
 			actions.Push (action);
 			newMode = inputMode_t.WEAPON;
 			//Debug.Log ("added action: ");
@@ -467,19 +535,57 @@ public class gameManager_t : MonoBehaviour
         // after you finish add_input()
 		Debug.Log("cancel input");
 		inputMode_t newMode = new inputMode_t();
+		if (actions.Count == 0) return false;
 		action_t prevAct = actions.Pop ();
-		if (prevAct == null)
-			return false;
-		if (inputMode == inputMode_t.WEAPON) {
+		// TODO: Revise this when all animations stuff are settled
+		weapon = tempPlayer.get_weapon(prevAct.wpnId);
+		if (inputMode == inputMode_t.WEAPON) 
+		{
+			if (actions.Count == 0)
+			// We are at the bottom of the stack
+			{
+				actions.Push (prevAct);
+				return false;
+			}
 			newMode = inputMode_t.MOVE;
+			revert_to_prev_state ();
 		} 
-		else {
-			newMode = weapon.cancel_action (prevAct, inputMode);
-			actions.Push (prevAct);
+		else 
+		{
+			if (weapon == null) 
+			{
+				newMode = inputMode_t.MOVE;
+				revert_to_prev_state ();
+			} else 
+			{
+				newMode = weapon.cancel_action (prevAct, inputMode);
+				actions.Push (prevAct);
+			}
 		}
 		set_mode (newMode);
 		return true;
     }
+
+	void revert_to_prev_state()
+	// Reverts both the physical board and the virtual board to the original state
+	// By popping the destroying the topmost item on the stack of copies
+	{
+		tempBoards.Pop ();
+		tempPlayer = tempBoards.Peek ().get_players () [playerId];
+		foreach (animController_t animCtrl in animControllers.Pop())
+		{
+			Destroy (animCtrl.gameObject);
+		}
+		foreach (animController_t animCtrl in animControllers.Peek())
+		{
+			animCtrl.gameObject.SetActive (true);
+		}
+	}
+
+	public void send_animation(List<animation_t> animSequence, int objectId)
+	{
+		animControllers.Peek()[objectId].animTriggers = animSequence;
+	}
 
 	public void test()
 	{

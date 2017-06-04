@@ -51,8 +51,8 @@ public class SSTest
         // test_grenade();
         //yueTest.test_weapons();
         //ruoyuanTest.test_weapons();
-        //wenzeTest.test_weapons();
-        //luTest.test_weapons();
+        wenzeTest.test_weapons();
+        luTest.test_weapons();
         // TODO: Fix this weapon
         //wenquanTest.test_weapons();
         // TODO: FIx this weapon

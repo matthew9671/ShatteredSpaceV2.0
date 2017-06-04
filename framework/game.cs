@@ -1,6 +1,9 @@
 #define DEBUG
+//#define UNITY
+#if UNITY
+using UnityEngine;
+#endif
 using System;
-//using UnityEngine;
 using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
@@ -22,6 +25,11 @@ public class SS
     // Created by one client and shared across all clients
     // So that the outcomes are identical across clients
     public const int RND_SEED = 42;
+
+	// Animation constants
+	public const int spMoveFrames = 15;
+	public const int movePause = 5;
+	public const int moveFrames = 20;
     public static readonly Vector2[] DIRECTIONS =
         {new Vector2(1, 0),
          new Vector2(-1, 0),
@@ -47,8 +55,17 @@ public class SS
         dist = dist/2;
         return dist;
     }
+
+    public static Vector3 board_to_world(Vector2 v)
+    {
+        Vector3 i = Vector3.right * gameManager_t.GM.spacing;
+		Vector3 j = Vector3.up * gameManager_t.GM.spacing * Mathf.Sqrt (3) / 2
+			+ Vector3.right * gameManager_t.GM.spacing / 2;
+        return v.x * i + v.y * j;
+    }
 }
 
+#if !UNITY
 // From stackoverflow
 // Fixes System.Diagnostics.Debug.Assert so that it prints the stack frame 
 // and terminates the program
@@ -161,6 +178,7 @@ public class vecComp : IEqualityComparer<Vector2>
        return v1 == v2;
    }
 }
+#endif
 
 public class attack_t
 {
@@ -268,6 +286,7 @@ public static class game_t
         {
             result[i,0] = spMovements[i];
             result[i,1] = movements[i];
+            units[i].add_anim_sequence(movements[i], spMovements[i]);
         }
         // Update the board, deal with collisions
         // This is also where all the objects gets updated
@@ -309,8 +328,19 @@ public static class game_t
         int unitCount = units.Count;
         List<Vector2>[] result = new List<Vector2>[unitCount];
         // A map from positions on the board to a list of player indices
+
+        #if UNITY
+
+        Dictionary<Vector2, List<int>> posToUnit = 
+            new Dictionary<Vector2, List<int>>();
+
+        #else
+
         Dictionary<Vector2, List<int>> posToUnit = 
             new Dictionary<Vector2, List<int>>(new vecComp());
+
+        #endif
+
         bool isMoving = true;
         // Temporarily remove all units from the board
         for (int i = 0; i < unitCount; i++)
@@ -698,7 +728,7 @@ public class board_t
                 {
                     // Testing only
                     // If one player dies, exit the program
-                    if (unit is player_t) Debug.Assert(false);
+                    if (unit is player_t) System.Diagnostics.Debug.Assert(false);
                     unit.on_destroyed(this);
                     // Add the unit object to the to remove list
                     remove_later(unit);
@@ -996,11 +1026,12 @@ public class object_t
 // damage objects
 public class unit_t : object_t
 {
-    int hp;
+    public GameObject gameObject;
+    protected int hp;
     // protected = only visible to classes that inherit this, 
     // but not to the outside world
     protected List<action_t> actions = new List<action_t>();
-    protected List<weapon_t> weapons = new List<weapon_t>();
+    public List<weapon_t> weapons = new List<weapon_t>();
 
     public unit_t(string name, int hp):base(name, solid:true)
     {
@@ -1067,6 +1098,39 @@ public class unit_t : object_t
             actions.RemoveAt(len - 1);
             return result;
         }
+    }
+
+    public void add_anim_sequence(List<Vector2> vs, List<Vector2> spvs)
+    {
+        animController_t aCtrl = gameObject.GetComponent<animController_t> ();
+        int n = spvs.Count;
+        aCtrl.animTriggers.Insert(0, anim_wait);
+        for (int i = 0; i < n; i++) 
+        {
+            Vector3 movement = SS.board_to_world(spvs[i]);
+            aCtrl.animTriggers.Insert(0, 
+				aCtrl.get_trigger(() => anim_move (movement/SS.spMoveFrames), SS.spMoveFrames));
+        }
+		aCtrl.animTriggers.Insert(0, aCtrl.get_trigger(anim_wait, SS.movePause));
+        n = vs.Count;
+        for (int i = 0; i < n; i++)
+        {
+            Vector3 movement = SS.board_to_world(vs[i]);
+            aCtrl.animTriggers.Insert(0, 
+				aCtrl.get_trigger(() => anim_move (movement/SS.moveFrames), SS.moveFrames));
+        }
+    }
+
+    public void anim_wait()
+    {
+        // Here comes nothing...
+    }
+
+    public void anim_move(Vector3 v)
+    // This is a animation method and it has no impact to the game itself
+    // Increment the object's position in the game world by v
+    {
+        this.gameObject.transform.position += v;
     }
 }
 

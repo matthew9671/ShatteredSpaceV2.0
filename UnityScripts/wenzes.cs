@@ -94,6 +94,7 @@ public class wenzeTest
     }
 }
 
+[Serializable]
 public class dirAttack_t : attack_t
 {
     public int dir;
@@ -103,6 +104,7 @@ public class dirAttack_t : attack_t
     }
 }
 
+[Serializable]
 public class shockDamage_t : damage_t
 {
 
@@ -158,6 +160,7 @@ public class shockDamage_t : damage_t
     }
 }
 
+[Serializable]
 public class shockCannon_t : weapon_t
 {
     static int[] modules = {0, 0, 1, 2};
@@ -217,20 +220,8 @@ public class shockCannon_t : weapon_t
         System.Diagnostics.Debug.Assert(inputMode == inputMode_t.ATTACK);
         // Add the attack to the action
         action.attack = new dirAttack_t(get_direction(mousePos, playerPos));
+        fireCount += 1;
         return inputMode_t.MOVE;
-    }
-        
-    public override inputMode_t cancel_action(action_t action, inputMode_t inputMode)
-    {
-        if (inputMode == inputMode_t.ATTACK)
-            return inputMode_t.WEAPON;
-        else if (inputMode == inputMode_t.MOVE) {
-            action.target = Vector2.zero;
-            return inputMode_t.ATTACK;
-        } 
-        else {
-            return inputMode_t.MOVE;
-        }
     }
 
     bool is_valid_attack(Vector2 tilePos, Vector2 playerPos, Vector2 mousePos)

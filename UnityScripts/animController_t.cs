@@ -6,8 +6,9 @@ using UnityEngine;
 public class animController_t : MonoBehaviour {
 
 	// This is the list of animation "triggers"
-	public List<Action> animTriggers = new List<Action>();
+	public List<animation_t> animTriggers = new List<animation_t>();
 	public int frames = -1;
+	public int objectId;
 
 	void Start ()
 	{
@@ -32,29 +33,27 @@ public class animController_t : MonoBehaviour {
 				frames -= 1;
 			}
 			// Call the topmost animation trigger
-			animTriggers[animTriggers.Count - 1]();
+			animTriggers[animTriggers.Count - 1](this.gameObject);
 		}
 	}
 
-	public Action get_trigger(Action a, int f)
+	public static animation_t get_trigger(animation_t a, int f)
 	{
 		// This function replaces itself on the stack with action a and sets frames to f.
-		return delegate 
+		return delegate (GameObject obj)
 		{
-			pop_animation();
-			frames = f;
-			animTriggers.Add (a);
+			animController_t aCtrl = obj.GetComponent<animController_t>();
+			//Debug.Log("Triggered!");
+			aCtrl.pop_animation();
+			aCtrl.frames = f;
+			aCtrl.animTriggers.Add (a);
 		};
 	}
 
-	void pop_animation()
+	public void pop_animation()
 	{
 		if (animTriggers.Count > 0)
 			animTriggers.RemoveAt(animTriggers.Count - 1);
-	}
-
-	public void set_anim_sequence(List<Action> s)
-	{
-		animTriggers = s;
+		//Debug.Log ("Popping animation! " + animTriggers.Count.ToString() + "animations remaining.");
 	}
 }

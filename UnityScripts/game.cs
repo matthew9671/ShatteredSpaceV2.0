@@ -1,6 +1,16 @@
 #define DEBUG
-using System;
+// In theory we should be able to just turn it off while not using unity
+// But unfortunately we are already working with gameObjects so 
+// there's no turning back
+// Still, kind of nice that I learned to do this trick
+#define UNITY
+#if UNITY
 using UnityEngine;
+#endif
+using System;
+using System.IO;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
@@ -22,6 +32,11 @@ public class SS
     // Created by one client and shared across all clients
     // So that the outcomes are identical across clients
     public const int RND_SEED = 42;
+
+	// Animation constants
+	public const int spMoveFrames = 15;
+	public const int movePause = 5;
+	public const int moveFrames = 20;
     public static readonly Vector2[] DIRECTIONS =
         {new Vector2(1, 0),
          new Vector2(-1, 0),
@@ -57,119 +72,198 @@ public class SS
     }
 }
 
-// // From stackoverflow
-// // Fixes System.Diagnostics.Debug.Assert so that it prints the stack frame 
-// // and terminates the program
-// public class DumpStackTraceListener : TraceListener
-// {
-//   public override void Write( string message )
-//   {
-//      Console.Write( message );
-//   }
+/// <summary>
+/// Reference Article http://www.codeproject.com/KB/tips/SerializedObjectCloner.aspx
+/// Provides a method for performing a deep copy of an object.
+/// Binary Serialization is used to perform the copy.
+/// </summary>
+public static class objectCopier
+{
+	/// <summary>
+	/// Perform a deep Copy of the object.
+	/// </summary>
+	/// <typeparam name="T">The type of object being copied.</typeparam>
+	/// <param name="source">The object instance to copy.</param>
+	/// <returns>The copied object.</returns>
+	public static T clone<T>(T source)
+	{
+		if (!typeof(T).IsSerializable)
+		{
+			if (source is GameObject) {
+				return source;
+			} else {
+				throw new ArgumentException ("The type must be serializable.", "source");
+			}
+		}
 
-//   public override void WriteLine(string message)
-//   {
-//      Console.WriteLine( message );
-//   }
+		// Don't serialize a null object, simply return the default for that object
+		if (ReferenceEquals(source, null))
+		{
+			return default(T);
+		}
 
-//   public override void Fail(string message)
-//   {
-//      Fail( message, String.Empty );
-//   }
+		IFormatter formatter = new BinaryFormatter();
+		Stream stream = new MemoryStream();
+		// 2. Construct a SurrogateSelector object
+		SurrogateSelector ss = new SurrogateSelector();
 
-//   public override void Fail(string message1, string message2)
-//   {
-//      if (null == message2)
-//         message2 = String.Empty;
+		Vector2SerializationSurrogate v2ss = new Vector2SerializationSurrogate();
+		ss.AddSurrogate(typeof(Vector2),
+			new StreamingContext(StreamingContextStates.All),
+			v2ss);
 
-//      Console.WriteLine( "{0}: {1}", message1, message2 );
-//      Console.WriteLine( "Stack Trace:" );
+		// 5. Have the formatter use our surrogate selector
+		formatter.SurrogateSelector = ss;
+		using (stream)
+		{
+			formatter.Serialize(stream, source);
+			stream.Seek(0, SeekOrigin.Begin);
+			return (T)formatter.Deserialize(stream);
+		}
+	}
+}
 
-//      StackTrace trace = new StackTrace( true );
-//      foreach (StackFrame frame in trace.GetFrames())
-//      {
-//         MethodBase frameClass = frame.GetMethod();
-//         Console.WriteLine( "  {2}.{3} {0}:{1}", 
-//                            frame.GetFileName(),
-//                            frame.GetFileLineNumber(),
-//                            frameClass.DeclaringType,
-//                            frameClass.Name );
-//      }
+sealed class Vector2SerializationSurrogate : ISerializationSurrogate {
 
-//     #if DEBUG
-//      Console.WriteLine( "Exiting because Fail" );
-//      Environment.Exit( 1 );
-//     #endif
-//   }
-// }
+	// Method called to serialize a Vector2 object
+	public void GetObjectData(System.Object obj,
+		SerializationInfo info, StreamingContext context) {
 
-// // This is defined in Unity but we're not running the prgram in Unity for now
-// public class Vector2
-// {
-//    public int x;
-//    public int y;
-//    public static readonly Vector2 zero = new Vector2(0,0);
+		Vector2 v2 = (Vector2) obj;
+		info.AddValue("x", v2.x);
+		info.AddValue("y", v2.y);
+		//Debug.Log(v2);
+	}
 
-//    public Vector2(int x, int y)
-//    {
-//        this.x = x;
-//        this.y = y;
-//    }
+	// Method called to deserialize a Vector2 object
+	public System.Object SetObjectData(System.Object obj,
+		SerializationInfo info, StreamingContext context,
+		ISurrogateSelector selector) {
 
-//    public static Vector2 operator +(Vector2 v1, Vector2 v2) 
-//    {
-//        return new Vector2(v1.x + v2.x, v1.y + v2.y);
-//    }
+		Vector2 v2 = (Vector2) obj;
+		v2.x = (float)info.GetValue("x", typeof(float));
+		v2.y = (float)info.GetValue("y", typeof(float));
+		obj = v2;
+		return obj;   // Formatters ignore this return value //Seems to have been fixed!
+	}
+}
 
-//    public static Vector2 operator -(Vector2 v1, Vector2 v2) 
-//    {
-//        return new Vector2(v1.x - v2.x, v1.y - v2.y);
-//    }
+#if !UNITY
+// From stackoverflow
+// Fixes System.Diagnostics.Debug.Assert so that it prints the stack frame 
+// and terminates the program
+public class DumpStackTraceListener : TraceListener
+{
+  public override void Write( string message )
+  {
+     Console.Write( message );
+  }
 
-//    public static Vector2 operator *(Vector2 v1, int c) 
-//    {
-//        return new Vector2(v1.x * c, v1.y * c);
-//    }
+  public override void WriteLine(string message)
+  {
+     Console.WriteLine( message );
+  }
 
-//    public static Vector2 operator *(int c, Vector2 v1) 
-//    {
-//        return new Vector2(v1.x * c, v1.y * c);
-//    }
+  public override void Fail(string message)
+  {
+     Fail( message, String.Empty );
+  }
 
-//    public static bool operator ==(Vector2 v1, Vector2 v2) 
-//    {
-//        if ((System.Object)v2 == null)
-//        {
-//            return (System.Object)v1 == null;
-//        }
-//        return (v1.x == v2.x) && (v1.y == v2.y);
-//    }
+  public override void Fail(string message1, string message2)
+  {
+     if (null == message2)
+        message2 = String.Empty;
 
-//    public static bool operator !=(Vector2 v1, Vector2 v2) 
-//    { 
-//        return !(v1 == v2);
-//    }
+     Console.WriteLine( "{0}: {1}", message1, message2 );
+     Console.WriteLine( "Stack Trace:" );
 
-//    public string ToString()
-//    {
-//        return "(" + this.x + ", " + this.y + ")";
-//    }
-// }
+     StackTrace trace = new StackTrace( true );
+     foreach (StackFrame frame in trace.GetFrames())
+     {
+        MethodBase frameClass = frame.GetMethod();
+        Console.WriteLine( "  {2}.{3} {0}:{1}", 
+                           frame.GetFileName(),
+                           frame.GetFileLineNumber(),
+                           frameClass.DeclaringType,
+                           frameClass.Name );
+     }
 
-// //Something we need in order for Vector2 to work
-// public class vecComp : IEqualityComparer<Vector2>
-// {
-//    public int GetHashCode(Vector2 v)
-//    {
-//        return v.x * 10 + v.y;
-//    }
+    #if DEBUG
+     Console.WriteLine( "Exiting because Fail" );
+     Environment.Exit( 1 );
+    #endif
+  }
+}
 
-//    public bool Equals(Vector2 v1, Vector2 v2)
-//    {
-//        return v1 == v2;
-//    }
-// }
+// This is defined in Unity but we're not running the prgram in Unity for now
+public class Vector2
+{
+   public int x;
+   public int y;
+   public static readonly Vector2 zero = new Vector2(0,0);
 
+   public Vector2(int x, int y)
+   {
+       this.x = x;
+       this.y = y;
+   }
+
+   public static Vector2 operator +(Vector2 v1, Vector2 v2) 
+   {
+       return new Vector2(v1.x + v2.x, v1.y + v2.y);
+   }
+
+   public static Vector2 operator -(Vector2 v1, Vector2 v2) 
+   {
+       return new Vector2(v1.x - v2.x, v1.y - v2.y);
+   }
+
+   public static Vector2 operator *(Vector2 v1, int c) 
+   {
+       return new Vector2(v1.x * c, v1.y * c);
+   }
+
+   public static Vector2 operator *(int c, Vector2 v1) 
+   {
+       return new Vector2(v1.x * c, v1.y * c);
+   }
+
+   public static bool operator ==(Vector2 v1, Vector2 v2) 
+   {
+       if ((System.Object)v2 == null)
+       {
+           return (System.Object)v1 == null;
+       }
+       return (v1.x == v2.x) && (v1.y == v2.y);
+   }
+
+   public static bool operator !=(Vector2 v1, Vector2 v2) 
+   { 
+       return !(v1 == v2);
+   }
+
+   public string ToString()
+   {
+       return "(" + this.x + ", " + this.y + ")";
+   }
+}
+
+//Something we need in order for Vector2 to work
+public class vecComp : IEqualityComparer<Vector2>
+{
+   public int GetHashCode(Vector2 v)
+   {
+       return v.x * 10 + v.y;
+   }
+
+   public bool Equals(Vector2 v1, Vector2 v2)
+   {
+       return v1 == v2;
+   }
+}
+#endif
+
+[Serializable]
 public class attack_t
 {
     public Vector2 target;
@@ -180,6 +274,7 @@ public class attack_t
 }
 
 // An action is a single step that a player executes
+[Serializable]
 public class action_t
 {
     public Vector2 movement;
@@ -201,7 +296,7 @@ public class action_t
 
 // An abstract instance of a game of shattered space
 public static class game_t
-{   
+{
     // Execute one time step at a time until both players run out of actions, 
     // then execute end_turn.
     // The input comes from user input
@@ -242,7 +337,7 @@ public static class game_t
         return true;
     }
         
-    static List<Vector2>[,] execute_step(board_t board)
+    public static List<Vector2>[,] execute_step(board_t board)
     // Execute one time step of the game.  
     // Get an action from each unit;
     // all units fire their weapons;
@@ -318,8 +413,19 @@ public static class game_t
         int unitCount = units.Count;
         List<Vector2>[] result = new List<Vector2>[unitCount];
         // A map from positions on the board to a list of player indices
+
+        #if UNITY
+
         Dictionary<Vector2, List<int>> posToUnit = 
             new Dictionary<Vector2, List<int>>();
+
+        #else
+
+        Dictionary<Vector2, List<int>> posToUnit = 
+            new Dictionary<Vector2, List<int>>(new vecComp());
+
+        #endif
+
         bool isMoving = true;
         // Temporarily remove all units from the board
         for (int i = 0; i < unitCount; i++)
@@ -499,6 +605,7 @@ public static class game_t
 } 
 
 // An opaque interface of the game board
+[Serializable]
 public class board_t
 {
     public int mapW;
@@ -920,20 +1027,17 @@ public class board_t
         } 
     }
 
-    public static board_t solo_copy(board_t board)
-    // Make a copy of the board with only one player on it
-    {
-        return board;
-    }
-
     public void set_dangerous(Vector2 tilePos, tileMode_t tileMode)
     {
         return;
     }
 }
 
+[Serializable]
 public class object_t
 {
+	// A number that corresponds to a animation controller and gameobject
+	public int objectId;
     // The object does not render and interact with other objects 
     // if this is false
     public bool exists = true;
@@ -1003,9 +1107,9 @@ public class object_t
 
 // A unit object is one that has a health bar and can interact with
 // damage objects
+[Serializable]
 public class unit_t : object_t
 {
-    public GameObject gameObject;
     protected int hp;
     // protected = only visible to classes that inherit this, 
     // but not to the outside world
@@ -1015,6 +1119,20 @@ public class unit_t : object_t
     public unit_t(string name, int hp):base(name, solid:true)
     {
         this.hp = hp;   
+    }
+
+    public weapon_t get_weapon(int wpnId)
+    // Returns the [wpnId]'s weapon in the unit's weapon list
+    // If there is no such weapon, return null
+    {
+        if (wpnId < 0 || wpnId >= weapons.Count)
+        {
+            return null;
+        }
+        else
+        {
+            return weapons[wpnId];
+        }
     }
 
     public virtual bool attack(attack_t attack, int wpnId, board_t board)
@@ -1078,42 +1196,32 @@ public class unit_t : object_t
             return result;
         }
     }
-
+		
     public void add_anim_sequence(List<Vector2> vs, List<Vector2> spvs)
     {
-
-        animController_t aCtrl = gameObject.GetComponent<animController_t> ();
-        int frames = 10;
-        int n = spvs.Count;
-        aCtrl.animTriggers.Insert(0, anim_wait);
-        for (int i = 0; i < n; i++) 
-        {
-            Vector3 movement = SS.board_to_world(spvs[i]);
-            aCtrl.animTriggers.Insert(0, 
-                aCtrl.get_trigger(() => anim_move (movement/frames), frames));
-        }
-        n = vs.Count;
-        for (int i = 0; i < n; i++)
-        {
-            Vector3 movement = SS.board_to_world(vs[i]);
-            aCtrl.animTriggers.Insert(0, 
-                aCtrl.get_trigger(() => anim_move (movement/frames), frames));
-        }
-    }
-
-    public void anim_wait()
-    {
-        // Here comes nothing...
-    }
-
-    public void anim_move(Vector3 v)
-    // This is a animation method and it has no impact to the game itself
-    // Increment the object's position in the game world by v
-    {
-        this.gameObject.transform.position += v;
+		List<animation_t> animSequence = new List<animation_t>();
+		// Put the animation on hold
+		//animSequence.Insert (0, delegate (GameObject obj){return;});
+		int n = spvs.Count;
+		int frames = 20;
+		for (int i = 0; i < n; i++) 
+		{
+			Vector3 movement = SS.board_to_world(spvs[i]) / frames;
+			animSequence.Insert (0, 
+				animController_t.get_trigger(playerAnimation_t.pool.move(movement), frames));
+		}
+		n = vs.Count;
+		for (int i = 0; i < n; i++) 
+		{
+			Vector3 movement = SS.board_to_world(vs[i]) / frames;
+			animSequence.Insert (0, 
+				animController_t.get_trigger(playerAnimation_t.pool.move(movement), frames));
+		}
+		gameManager_t.GM.send_animation (animSequence, this.objectId);
     }
 }
 
+[Serializable]
 public class player_t : unit_t
 {
     const int WEAPONSLOTS = 4;
@@ -1190,15 +1298,15 @@ public class player_t : unit_t
 
     public void add_action(action_t action)
     // Add action onto the action list
-    // Should only be called by a blast_wave_t object
     {
         this.actions.Add(action);
     }
 }
 
+[Serializable]
 public class turret_t : unit_t
 {
-    const int hp = 10;
+    new const int hp = 10;
     int reward;
     weapon_t weapon;
 
@@ -1271,6 +1379,7 @@ public class turret_t : unit_t
     }
 }
 
+[Serializable]
 public class damage_t : object_t
 {
     public int amount;
@@ -1299,6 +1408,7 @@ public class damage_t : object_t
 }
 
 // A special kind of damage that pushes players away
+[Serializable]
 public class blastWave_t : damage_t
 {
     Vector2 direction;
@@ -1321,19 +1431,25 @@ public class blastWave_t : damage_t
     }
 }
 
+[Serializable]
 public class weapon_t
 {
     // All kinds of weapons are its subclasses
-    bool defensive;
+	protected bool defensive;
     // 0 momentum 1 explosive 2 particle 3 field (4 overheated particle ?)
     // The build cost of the weapon
     // Doesn't change once the weapon is created
     public int[] modules;
-    int fireCount;
+
+    // Number of shots fired in planning
+    protected int fireCount;
+    // Maximum number of shots that can be fired in planning
+    const int maxFire = 1;
+
     // Any delay <0 would let the damage be generated at end of turn
-    int delay_base;
-    int damage_base;
-    int range_base;
+	protected int delay_base;
+	protected int damage_base;
+	protected int range_base;
 
     public weapon_t(int range, int damage, int delay, int[] modules)
     {
@@ -1347,7 +1463,14 @@ public class weapon_t
     // User interface related methods
     public virtual void refresh()
     // Refresh the weapon so that it can fire again in the next turn.
-    {}
+    {
+        fireCount = 0;
+    }
+
+	public virtual bool can_be_fired()
+	{
+		return fireCount < maxFire;
+	}
 
     public virtual inputMode_t generate_action(action_t action, 
         Vector2 playerPos, Vector2 mousePos, inputMode_t inputMode)
@@ -1357,9 +1480,11 @@ public class weapon_t
         // So we assume that the attack is not generated
         // And we are not doing a special movement
         System.Diagnostics.Debug.Assert(action.attack == null);
+        System.Diagnostics.Debug.Assert(maxFire > fireCount);
         System.Diagnostics.Debug.Assert(inputMode == inputMode_t.ATTACK);
         // Add the attack to the action
         action.attack = new attack_t(mousePos);
+        fireCount += 1;
         return inputMode_t.MOVE;
     }
 
@@ -1367,8 +1492,10 @@ public class weapon_t
     {
         if (inputMode == inputMode_t.ATTACK)
             return inputMode_t.WEAPON;
-        else if (inputMode == inputMode_t.MOVE) {
+        else if (inputMode == inputMode_t.MOVE) 
+        {
             action.target = Vector2.zero;
+            fireCount -= 1;
             return inputMode_t.ATTACK;
         }
         else {
@@ -1446,28 +1573,31 @@ public class weapon_t
     }
 }
 
+[Serializable]
 // The most basic weapon
 // There should be a weaker version of it that only uses one momentum module
 public class blaster_t : weapon_t
 {
-    static int[] modules = {2, 0, 0, 0};
+    new static int[] modules = {2, 0, 0, 0};
     public blaster_t():base(range:5, damage:5, delay:1, modules:modules)
     {}
 }
 
+[Serializable]
 // A variation of the blaster that the turrets use
 public class turretGun_t : weapon_t
 {
-    static int[] modules = {100, 100, 100, 100};
+    new static int[] modules = {100, 100, 100, 100};
     public turretGun_t():base(range:4, damage:5, delay:1, modules:modules)
     {}
 }
 
+[Serializable]
 // The basic weapon explosive (bomb-based) weapon
 // There should be a weaker version of it that only uses one explosive module
 public class grenadeLauncher_t : weapon_t
 {
-    static int[] modules = {0, 2, 0, 0};
+    new static int[] modules = {0, 2, 0, 0};
     const int SPLASH_DAMAGE = 2;
     public grenadeLauncher_t():base(range:5, damage:4, delay:-1, modules:modules)
     {}
@@ -1507,6 +1637,7 @@ public class grenadeLauncher_t : weapon_t
 // UI Stuff
 // After we fully transition to Unity we will move these to gameManager.cs
 public enum inputMode_t {NONE, ATTACK, MOVE, SPMOVE, WEAPON};
+public delegate void animation_t(GameObject obj);
 
 public struct tileMode_t
 {
