@@ -3,10 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class playerAnimation_t : MonoBehaviour 
+public class unitAnimation_t : MonoBehaviour 
 {
-	public static playerAnimation_t pool;
-	public GameObject playerModel;
+	public static unitAnimation_t pool;
+	public GameObject turret1;
 
 	// Black magic
 	void Awake()

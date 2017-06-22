@@ -6,54 +6,123 @@ using UnityEngine;
 public class animController_t : MonoBehaviour {
 
 	// This is the list of animation "triggers"
-	public List<animation_t> animTriggers = new List<animation_t>();
-	public int frames = -1;
+	public List<animation_t> animations = new List<animation_t>();
 	public int objectId;
+	public bool isPlaying = true;
+	public int index = 0;
+	// For debugging
+	public int animCount;
 
-	void Start ()
+	public void reset()
 	{
-		gameManager_t.GM.stepAnimation += pop_animation;
+		index = 0;
+		animations.Clear();
 	}
 
 	// Update is called once per frame
-	void Update () 
+	void FixedUpdate () 
 	{
-		if (animTriggers.Count != 0) 
+		animCount = animations.Count;
+		while (isPlaying && animations.Count > index) 
 		{
-			if (frames == 0)
+			animation_t animation = animations[index];
+			if (animation.delay == 0)
 			{
-				// We finished one animation
-				frames = -1;
-				// Get ready to execute the next animation
-				pop_animation();
+				index++;
 			}
-			else if (frames > 0)
+			if (!animation.isPlaying)
 			{
-				// We are still in the middle of 
-				frames -= 1;
+				animation.play_animation(this.gameObject);
+				animation.isActive = true;
 			}
-			// Call the topmost animation trigger
-			animTriggers[animTriggers.Count - 1](this.gameObject);
+			if (animation.delay > 0)
+			{
+				animation.delay -= 1;
+				break;
+			}
+		}
+		// Update the duration counter on each playing animation
+		foreach (animation_t animation in animations)
+		{
+			if (animation != null && animation.isPlaying)
+			{
+				if (animation.duration == 0)
+				{
+					animation.stop_animation();
+					animation.isActive = false;
+				}
+				else
+				{
+					animation.duration -= 1;
+				}
+			}
 		}
 	}
 
-	public static animation_t get_trigger(animation_t a, int f)
+	public void copy_from(animController_t other)
 	{
-		// This function replaces itself on the stack with action a and sets frames to f.
-		return delegate (GameObject obj)
+		animations = new List<animation_t>();
+		objectId = other.objectId;
+		isPlaying = other.isPlaying;
+		index = other.index;
+		foreach(animation_t anim in other.animations)
 		{
-			animController_t aCtrl = obj.GetComponent<animController_t>();
-			//Debug.Log("Triggered!");
-			aCtrl.pop_animation();
-			aCtrl.frames = f;
-			aCtrl.animTriggers.Add (a);
-		};
+			if (anim != null) animations.Add(anim.copy());
+		}
+	}
+
+	public void play()
+	{
+		//Debug.Log("Animation started!");
+		Time.timeScale = 1;
+		isPlaying = true;
+		foreach (animation_t animation in animations)
+		{
+			if (animation.isActive) animation.play_animation(this.gameObject);
+		}
+	}
+
+	public void stop()
+	{
+		//Debug.Log("Animation stopped!");
+		/*Time.timeScale = 0;*/
+		isPlaying = false;
+		foreach (animation_t animation in animations)
+		{
+			if (animation.isActive) animation.stop_animation();
+		}
 	}
 
 	public void pop_animation()
 	{
-		if (animTriggers.Count > 0)
-			animTriggers.RemoveAt(animTriggers.Count - 1);
-		//Debug.Log ("Popping animation! " + animTriggers.Count.ToString() + "animations remaining.");
+		if ( animations.Count > 0)
+			 animations.RemoveAt( animations.Count - 1);
+		//Debug.Log ("Popping animation! " +  animations.Count.ToString() + "animations remaining.");
+	}
+
+	public void destroy()
+	{
+		foreach(animation_t anim in animations)
+		{
+			anim.destroy();
+		}
+		Destroy(this.gameObject);
+		Destroy(this);
+	}
+
+	public void set_active(bool b)
+	{
+		foreach(animation_t anim in animations)
+		{
+			anim.set_active(b);
+		}
+		if (b)
+		{
+			this.gameObject.SetActive(true);
+		}
+		else
+		{
+			this.gameObject.SetActive(false);
+		}
 	}
 }

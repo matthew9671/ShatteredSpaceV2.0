@@ -337,47 +337,103 @@ public static class game_t
         return true;
     }
         
-    public static List<Vector2>[,] execute_step(board_t board)
+	public static void execute_step(board_t board)
     // Execute one time step of the game.  
     // Get an action from each unit;
     // all units fire their weapons;
     // move the units and deal with solid collisions recursively. 
     // Calls update board when finished.
     {
-        List<unit_t> units = board.get_units();
-        int unitCount = units.Count;
-        Vector2[] spvs = new Vector2[unitCount];
-        Vector2[] vs = new Vector2[unitCount];
-        List<Vector2>[,] result = new List<Vector2>[unitCount,2];
-        // Calculate special and normal movements separately
-        // with the same helper
-        for (int i = 0; i < unitCount; i++)
-        {
-            action_t action = units[i].pop_action();
-            spvs[i] = action.spMovement;
-            vs[i] = action.movement;
-            // Every player fire their weapons
-            // Note that some weapons aren't "fired" in here
-            // They just gets turned on and continue to take effect
-            // TODO: Technically you move first and then attack
-            units[i].attack(action.attack, action.wpnId, board);
-        }
-        // Move the players
-        SS.dbg_log("Doing special movement...");
-        List<Vector2>[] spMovements = move_units(board, units, spvs);
-        SS.dbg_log("Doing normal movement...");
-        List<Vector2>[] movements = move_units(board, units, vs);
-        for (int i = 0; i < unitCount; i++)
-        {
-            result[i,0] = spMovements[i];
-            result[i,1] = movements[i];
-            units[i].add_anim_sequence(movements[i], spMovements[i]);
-        }
-        // Update the board, deal with collisions
-        // This is also where all the objects gets updated
-        step_update(board);
-        return result;
+		// Execute the three components separately
+		execute_movement(board);
+		execute_attack(board);
+		execute_sp_movement(board);
+		resolve_step(board);
+		// Things that happens during a real execution of the game
+		List<unit_t> units = board.get_units();
+		int unitCount = units.Count;
+		for (int i = 0; i < unitCount; i++)
+		{
+			List<animation_t> halt = new List<animation_t>();
+			halt.Add(animation_t.HALT);
+			gameManager_t.GM.send_animation(halt, units[i].objectId);
+		}
     }
+
+	public static void resolve_step(board_t board)
+	// Pop the actions of every unit
+	// And update the board
+	{
+		List<unit_t> units = board.get_units();
+		int unitCount = units.Count;
+		for (int i = 0; i < unitCount; i++)
+		{
+			// Get rid of the action that has been executed
+			units[i].pop_action();
+		}
+		// Update the board, deal with collisions
+		// This is also where all the objects gets updated
+		step_update(board);
+	}
+
+	public static void execute_movement(board_t board)
+	// Execute only the movement part in one time step of the game
+	{
+		List<unit_t> units = board.get_units();
+		List<Vector2> startPos = new List<Vector2>();
+		int unitCount = units.Count;
+		Vector2[] vs = new Vector2[unitCount];
+		for (int i = 0; i < unitCount; i++)
+		{
+			startPos.Add(units[i].get_pos());
+			action_t action = units[i].peek_action();
+			vs[i] = action.movement;
+		}
+		// Move the units
+		SS.dbg_log("Doing normal movement...");
+		List<Vector2>[] movements = move_units(board, units, vs);
+		// Add the movement animations
+		for (int i = 0; i < unitCount; i++)
+		{
+			units[i].add_movement_animation(startPos[i], movements[i]);
+		}
+	}
+
+	public static void execute_attack(board_t board)
+	// Execute only the attack part in one time step of the game
+	{
+		List<unit_t> units = board.get_units();
+		int unitCount = units.Count;
+		for (int i = 0; i < unitCount; i++)
+		{
+			action_t action = units[i].peek_action();
+			animation_t attackAnimation = units[i].attack(action.attack, action.wpnId, board);
+			units [i].add_attack_animation (attackAnimation);
+		}
+	}
+
+	public static void execute_sp_movement(board_t board)
+	// Execute only the special movement part in one time step of the game
+	{
+		List<unit_t> units = board.get_units();
+		List<Vector2> startPos = new List<Vector2>();
+		int unitCount = units.Count;
+		Vector2[] spvs = new Vector2[unitCount];
+		for (int i = 0; i < unitCount; i++)
+		{
+			startPos.Add(units[i].get_pos());
+			action_t action = units[i].peek_action();
+			spvs[i] = action.spMovement;
+		}
+		// Move the units
+		SS.dbg_log("Doing special movement...");
+		List<Vector2>[] spMovements = move_units(board, units, spvs);
+		// Add the movement animations
+		for (int i = 0; i < unitCount; i++)
+		{
+			units[i].add_movement_animation(startPos[i], spMovements[i]);
+		}
+	}
 
     // This is where time moves forward 1 step
     // Lots of things can be happening at the same time
@@ -444,11 +500,8 @@ public static class game_t
                 }
                 // We only record non-zero movements for now
                 // Because it's easier to process
-                if (vs[i] != Vector2.zero)
-                {
-                    SS.dbg_log("Adding velocity: "+ vs[i].ToString());
-                    result[i].Add(vs[i]);
-                }
+                SS.dbg_log("Adding velocity: "+ vs[i].ToString());
+                result[i].Add(vs[i]);
             }
             // First check for special case where two units switch positions
             for (int i = 0; i < unitCount; i++)
@@ -676,6 +729,8 @@ public class board_t
         Vector2 pos = new Vector2(3, 0);
         p1.playerId = 0;
         put_object(pos, p1);
+		// Instantiate turrets and other units
+		put_object(new Vector2(0, 3), new turret_t());
         if (playerCount == 2)
         {
             player_t p2 = new player_t();
@@ -1135,17 +1190,16 @@ public class unit_t : object_t
         }
     }
 
-    public virtual bool attack(attack_t attack, int wpnId, board_t board)
+	public virtual animation_t attack(attack_t attack, int wpnId, board_t board)
     // Fire the weapon with the parameters specified in attack 
     // Returns false if this is an invalid attack.
     {
         //System.Diagnostics.Debug.Assert(pos != null);
         if (wpnId < 0 || wpnId >= weapons.Count)
         {
-            return false;
+			return animation_t.DO_NOTHING;
         }
-        weapons[wpnId].fire(attack, board, this);
-        return true;
+		return weapons[wpnId].fire(attack, board, this);
     }
 
     public bool get_hit(damage_t dmg)
@@ -1179,6 +1233,15 @@ public class unit_t : object_t
         return hp;
     }
 
+	public virtual action_t peek_action()
+	// Returns an action from the action LIST of the unit without removing it
+	{
+		if (actions.Count == 0) return new action_t();
+		action_t result = pop_action ();
+		actions.Insert (0, result);
+		return result;
+	}
+
     public virtual action_t pop_action()
     // Removes and returns an action from the action LIST of the unit
     {
@@ -1186,39 +1249,45 @@ public class unit_t : object_t
         int len = actions.Count;
         if (len == 0)
         {
-            SS.dbg_log("No actions left!");
+            //SS.dbg_log("No actions left!");
             return new action_t();
         }
         else
         {
-            action_t result = actions[len - 1];
-            actions.RemoveAt(len - 1);
+            action_t result = actions[0];
+            actions.RemoveAt(0);
             return result;
         }
     }
-		
-    public void add_anim_sequence(List<Vector2> vs, List<Vector2> spvs)
+
+	// --------------------------
+	// Methods related to visuals
+	// --------------------------
+
+	public virtual void add_movement_animation(Vector2 start, List<Vector2> vs)
     {
 		List<animation_t> animSequence = new List<animation_t>();
-		// Put the animation on hold
-		//animSequence.Insert (0, delegate (GameObject obj){return;});
-		int n = spvs.Count;
+		int n = vs.Count;
 		int frames = 20;
 		for (int i = 0; i < n; i++) 
 		{
-			Vector3 movement = SS.board_to_world(spvs[i]) / frames;
-			animSequence.Insert (0, 
-				animController_t.get_trigger(playerAnimation_t.pool.move(movement), frames));
+			animSequence.Add (unitAnimation_t.pool.get_move_animation(vs[i] + start, frames));
+			start += vs[i];
 		}
-		n = vs.Count;
-		for (int i = 0; i < n; i++) 
-		{
-			Vector3 movement = SS.board_to_world(vs[i]) / frames;
-			animSequence.Insert (0, 
-				animController_t.get_trigger(playerAnimation_t.pool.move(movement), frames));
-		}
-		gameManager_t.GM.send_animation (animSequence, this.objectId);
+		gameManager_t.GM.send_animation(animSequence, objectId);
     }
+
+	public virtual void add_attack_animation(animation_t attackAnimation)
+	{
+		List<animation_t> animSequence = new List<animation_t>();
+		animSequence.Insert (0, attackAnimation);
+		gameManager_t.GM.send_animation(animSequence, objectId);
+	}
+
+	public virtual GameObject get_model()
+	{
+		return null;
+	}
 }
 
 [Serializable]
@@ -1299,8 +1368,32 @@ public class player_t : unit_t
     public void add_action(action_t action)
     // Add action onto the action list
     {
-        this.actions.Add(action);
+		this.actions.Insert(0, action);
     }
+	public override void add_movement_animation(Vector2 start, List<Vector2> vs)
+	{
+		List<animation_t> animSequence = new List<animation_t>();
+		int n = vs.Count;
+		int frames = 20;
+		for (int i = 0; i < n; i++) 
+		{
+			animSequence.Add (playerAnimation_t.pool.get_move_animation(vs[i] + start, frames));
+			start += vs[i];
+		}
+		gameManager_t.GM.send_animation(animSequence, objectId);
+	}
+
+	public override void add_attack_animation(animation_t attackAnimation)
+	{
+		List<animation_t> animSequence = new List<animation_t>();
+		animSequence.Insert (0, attackAnimation);
+		gameManager_t.GM.send_animation(animSequence, objectId);
+	}
+
+	public override GameObject get_model ()
+	{
+		return playerAnimation_t.pool.playerModel;
+	}
 }
 
 [Serializable]
@@ -1317,8 +1410,8 @@ public class turret_t : unit_t
         this.weapons.Add(weapon);
     }
 
-    public override void end_turn(board_t board)
-    // At the end of turn, the turret locks onto the nearest player
+    public override void step_update(board_t board)
+    // At the each step, the turret locks onto the nearest player
     // And fires its weapon at a random position 
     // within distance 1 of that player
     {
@@ -1377,6 +1470,11 @@ public class turret_t : unit_t
         }
         
     }
+		
+	public override GameObject get_model()
+	{
+		return unitAnimation_t.pool.turret1;
+	}
 }
 
 [Serializable]
@@ -1404,270 +1502,5 @@ public class damage_t : object_t
             target.get_hit(this);
             // Maybe remove the damage object from the board?
         }
-    }
-}
-
-// A special kind of damage that pushes players away
-[Serializable]
-public class blastWave_t : damage_t
-{
-    Vector2 direction;
-    public blastWave_t(Vector2 direction):base()
-    {
-        this.direction = direction;
-    }
-
-    public override void on_collision(object_t other)
-    // Calls get_hit on the other object 
-    {
-        base.on_collision(other);
-        if (other is player_t)
-        {
-            player_t player = other as player_t;
-            action_t action = new action_t();
-            action.movement = direction;
-            player.add_action(action);
-        }
-    }
-}
-
-[Serializable]
-public class weapon_t
-{
-    // All kinds of weapons are its subclasses
-	protected bool defensive;
-    // 0 momentum 1 explosive 2 particle 3 field (4 overheated particle ?)
-    // The build cost of the weapon
-    // Doesn't change once the weapon is created
-    public int[] modules;
-
-    // Number of shots fired in planning
-    protected int fireCount;
-    // Maximum number of shots that can be fired in planning
-    const int maxFire = 1;
-
-    // Any delay <0 would let the damage be generated at end of turn
-	protected int delay_base;
-	protected int damage_base;
-	protected int range_base;
-
-    public weapon_t(int range, int damage, int delay, int[] modules)
-    {
-        this.range_base = range;
-        this.damage_base = damage;
-        this.delay_base = delay;
-        this.modules = modules;
-    }
-
-    // #########################################################################
-    // User interface related methods
-    public virtual void refresh()
-    // Refresh the weapon so that it can fire again in the next turn.
-    {
-        fireCount = 0;
-    }
-
-	public virtual bool can_be_fired()
-	{
-		return fireCount < maxFire;
-	}
-
-    public virtual inputMode_t generate_action(action_t action, 
-        Vector2 playerPos, Vector2 mousePos, inputMode_t inputMode)
-    // Change the action based on user input and return the next inputMode
-    {
-        // This is the most general case
-        // So we assume that the attack is not generated
-        // And we are not doing a special movement
-        System.Diagnostics.Debug.Assert(action.attack == null);
-        System.Diagnostics.Debug.Assert(maxFire > fireCount);
-        System.Diagnostics.Debug.Assert(inputMode == inputMode_t.ATTACK);
-        // Add the attack to the action
-        action.attack = new attack_t(mousePos);
-        fireCount += 1;
-        return inputMode_t.MOVE;
-    }
-
-    public virtual inputMode_t cancel_action(action_t action, inputMode_t inputMode)
-    {
-        if (inputMode == inputMode_t.ATTACK)
-            return inputMode_t.WEAPON;
-        else if (inputMode == inputMode_t.MOVE) 
-        {
-            action.target = Vector2.zero;
-            fireCount -= 1;
-            return inputMode_t.ATTACK;
-        }
-        else {
-            return inputMode_t.MOVE;
-        }
-    }
-
-    public virtual tileMode_t get_tile_mode(Vector2 tilePos, Vector2 playerPos, 
-        Vector2 mousePos, inputMode_t inputMode, board_t board, unit_t master)
-    // Returns the tile mode of the tile at tilePos
-    // Generally speaking, when inputMode is ATTACK: 
-    // tile.isOutOfRange = true if it is out of range from playerPos;
-    // is validAttack if it is in range and have the mouse over it.
-    {
-        System.Diagnostics.Debug.Assert(inputMode == inputMode_t.ATTACK);
-        tileMode_t result = new tileMode_t();
-        if (!is_in_range(playerPos, tilePos, master, board))
-        {
-            result.isOutOfRange = true;
-        }
-        else if (mousePos == tilePos)
-        {
-            result.isValidTarget = true;
-        }
-        return result;
-    }
-
-    public virtual bool is_in_range(Vector2 playerPos, Vector2 targetPos,
-        unit_t master, board_t board)
-    // Returns true if targetPos is within attack range from playerPos
-    {
-        int d = SS.distance(playerPos, targetPos);
-        return (d > 0) && (d <= get_range(master)) 
-            && board.get_blocked(playerPos, targetPos) == null;
-    }
-
-    public virtual int get_range(unit_t master)
-    // Returns the weapon's attack range
-    // usually it is base range plus something depending on the upgrades
-    {
-        return range_base;
-    }
-    // #########################################################################
-
-    public virtual int get_damage_amount(unit_t master)
-    // Returns the weapon's damage amount
-    // usually it is base damage plus something depending on the upgrades
-    {
-        return damage_base;
-    }
-
-    public virtual int get_delay(unit_t master)
-    // Returns the weapon's delay
-    // usually it is just the base delay but it might change 
-    // according to the upgrades
-    {
-        return delay_base;
-    }
-
-    public virtual bool fire(attack_t attack, board_t board, unit_t master)
-    // Create pending damage on the board, 
-    // return false if this is an invalid attack. 
-    // May have some special effects on the master.
-    {
-        System.Diagnostics.Debug.Assert(attack != null);
-        Vector2 pos = attack.target;
-        int amount = get_damage_amount(master);
-        int delay = get_delay(master);
-        damage_t dmg = new damage_t();
-        dmg.set_params(amount, delay);
-        dmg.set_pos(pos);
-        dmg.stepLife = 1;
-        board.create_damage(dmg);
-        return board.is_in_board(pos);
-    }
-}
-
-[Serializable]
-// The most basic weapon
-// There should be a weaker version of it that only uses one momentum module
-public class blaster_t : weapon_t
-{
-    new static int[] modules = {2, 0, 0, 0};
-    public blaster_t():base(range:5, damage:5, delay:1, modules:modules)
-    {}
-}
-
-[Serializable]
-// A variation of the blaster that the turrets use
-public class turretGun_t : weapon_t
-{
-    new static int[] modules = {100, 100, 100, 100};
-    public turretGun_t():base(range:4, damage:5, delay:1, modules:modules)
-    {}
-}
-
-[Serializable]
-// The basic weapon explosive (bomb-based) weapon
-// There should be a weaker version of it that only uses one explosive module
-public class grenadeLauncher_t : weapon_t
-{
-    new static int[] modules = {0, 2, 0, 0};
-    const int SPLASH_DAMAGE = 2;
-    public grenadeLauncher_t():base(range:5, damage:4, delay:-1, modules:modules)
-    {}
-
-    public int get_splash_damage(unit_t master)
-    // There might be upgrades that increases the splash damage
-    {
-        return SPLASH_DAMAGE;
-    }
-
-    public override bool fire(attack_t attack, board_t board, unit_t master)
-    // Create pending damage on the board, 
-    // return false if this is an invalid attack. 
-    // May have some special effects on the master.
-    {
-        Vector2 pos = attack.target;
-        generate_splash_damage(pos, board, master);
-        return base.fire(attack, board, master);
-    }
-
-    void generate_splash_damage(Vector2 pos, board_t board, unit_t master)
-    {
-        System.Diagnostics.Debug.Assert(pos != null);
-        int amount = get_splash_damage(master);
-        int delay = get_delay(master);
-        foreach (Vector2 dir in SS.DIRECTIONS)
-        {
-            blastWave_t dmg = new blastWave_t(dir);
-            dmg.set_params(amount, delay);
-            dmg.set_pos(pos + dir);
-            dmg.stepLife = 1;
-            board.create_damage(dmg);
-        }
-    }
-}
-
-// UI Stuff
-// After we fully transition to Unity we will move these to gameManager.cs
-public enum inputMode_t {NONE, ATTACK, MOVE, SPMOVE, WEAPON};
-public delegate void animation_t(GameObject obj);
-
-public struct tileMode_t
-{
-    // True if we know some damage with positive amount is going to hit the tile in the future
-    public bool isDangerous;
-    // Meaningful only when isDangerous is true
-    // Usually -1, 0 or 1
-    // If it's -1, the damage falls at end of turn
-    // 0 means that the damage is on the tile right now
-    // 1 means that the damage will be put on the tile a step later
-    public int stepsToDamage;
-    public bool isOutOfRange;
-    public bool isValidMove;
-    public bool isValidTarget;
-
-    public static bool operator ==(tileMode_t t1, tileMode_t t2)
-    {
-        return (t1.isDangerous == t2.isDangerous &&
-        t1.stepsToDamage == t2.stepsToDamage &&
-        t1.isOutOfRange == t2.isOutOfRange &&
-        t1.isValidMove == t2.isValidMove &&
-        t1.isValidTarget == t2.isValidTarget);
-    }
-
-    public static bool operator !=(tileMode_t t1, tileMode_t t2)
-    {
-        return !(t1.isDangerous == t2.isDangerous &&
-            t1.stepsToDamage == t2.stepsToDamage &&
-            t1.isOutOfRange == t2.isOutOfRange &&
-            t1.isValidMove == t2.isValidMove &&
-            t1.isValidTarget == t2.isValidTarget);
     }
 }

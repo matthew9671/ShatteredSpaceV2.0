@@ -176,7 +176,7 @@ public class shockCannon_t : weapon_t
                     {new Vector2(0,-1), new Vector2(1,-2), new Vector2(1,-1)},
                     {new Vector2(1,-1), new Vector2(2,-1), new Vector2(1,0)}};
 
-    public override bool fire(attack_t attack, board_t board, unit_t master){
+	public override animation_t fire(attack_t attack, board_t board, unit_t master){
         dirAttack_t dirAttack = attack as dirAttack_t;
         int dir = dirAttack.dir;
         Vector2 targetPos;
@@ -192,7 +192,7 @@ public class shockCannon_t : weapon_t
             dmg.turnLife = 1;
             board.create_damage(dmg);
         }
-        return true;
+		return get_fire_animation(attack, master);
     }
 
     int get_direction(Vector2 mousePos, Vector2 playerPos) {

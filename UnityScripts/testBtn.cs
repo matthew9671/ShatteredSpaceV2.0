@@ -28,9 +28,4 @@ public class testBtn : MonoBehaviour {
 	{
 		gameManager_t.GM.print_stack ();
 	}
-
-	public void test_delegate()
-	{
-		gameManager_t.GM.test_delegate ();
-	}
 }
