@@ -18,7 +18,7 @@ public class weapon_t
 	// Number of shots fired in planning
 	protected int fireCount;
 	// Maximum number of shots that can be fired in planning
-	const int maxFire = 1;
+	protected const int maxFire = 1;
 
 	// Any delay <0 would let the damage be generated at end of turn
 	protected int delay_base;
@@ -166,7 +166,7 @@ public class blaster_t : weapon_t
 
 	public override animation_t get_fire_animation (attack_t attack, unit_t master)
 	{
-		int frames = 20;
+		int frames = gameManager_t.stepFrames;
 		return new blasterAnimation_t(attack.target, frames);
 	}
 }
@@ -181,7 +181,117 @@ public class turretGun_t : weapon_t
 
 	public override animation_t get_fire_animation (attack_t attack, unit_t master)
 	{
-		int frames = 20;
+		int frames = gameManager_t.stepFrames;
+		return new blasterAnimation_t(attack.target, frames);
+	}
+}
+
+[Serializable]
+// A momentum weapon that pushes you back when you fire it
+// Can be used to dodge 0-delay weapons
+public class recoilCannon_t : weapon_t
+{
+	new static int[] modules = {1, 0, 0, 1};
+	Vector2 target;
+	public recoilCannon_t():base(range:4, damage:6, delay:1, modules:modules)
+	{}
+
+	public override inputMode_t generate_action(action_t action, 
+		Vector2 playerPos, Vector2 mousePos, inputMode_t inputMode)
+	// Change the action based on user input and return the next inputMode
+	{
+		if (inputMode == inputMode_t.ATTACK)
+		{
+			// Add the attack to the action
+			action.attack = new attack_t(mousePos);
+			// Remember the attack target since it will be useful when the player chooses spMovement
+			target = mousePos;
+			fireCount += 1;
+			return inputMode_t.SPMOVE;
+		}
+		else if (inputMode == inputMode_t.SPMOVE)
+		{
+			action.spMovement = mousePos - playerPos;
+			return inputMode_t.MOVE;
+		}
+		else
+		{
+			Debug.LogError("Generate action called on recoil cannon with inputmode " + inputMode.ToString());
+			return inputMode_t.MOVE;
+		}
+	}
+		
+	public override inputMode_t cancel_action(action_t action, inputMode_t inputMode)
+	{
+		if (inputMode == inputMode_t.ATTACK)
+			return inputMode_t.WEAPON;
+		else if (inputMode == inputMode_t.MOVE || inputMode == inputMode_t.FINISHED) 
+		{
+			action.spMovement = Vector2.zero;
+			// Get rid of all permanent states
+			//            fireCount -= 1;
+			return inputMode_t.SPMOVE;
+		}
+		else if (inputMode == inputMode_t.SPMOVE)
+		{
+			action.attack = null;
+			return inputMode_t.ATTACK;
+		}
+		else
+		{
+			// I don't think we will get here though
+			return inputMode_t.MOVE;
+		}
+	}
+
+	public override tileMode_t get_tile_mode(Vector2 tilePos, Vector2 playerPos, 
+		Vector2 mousePos, inputMode_t inputMode, board_t board, unit_t master)
+	// Returns the tile mode of the tile at tilePos
+	// Generally speaking, when inputMode is ATTACK: 
+	// tile.isOutOfRange = true if it is out of range from playerPos;
+	// is validAttack if it is in range and have the mouse over it.
+	{
+		tileMode_t result = new tileMode_t();
+		if (inputMode == inputMode_t.ATTACK)
+		{
+			if (!is_in_range(playerPos, tilePos, master, board))
+			{
+				result.isOutOfRange = true;
+			}
+			else if (mousePos == tilePos)
+			{
+				result.isValidTarget = true;
+				gameManager_t.GM.set_spline(playerPos, tilePos);
+			}
+			return result;
+		}
+		else if (inputMode == inputMode_t.SPMOVE)
+		{
+			Vector3 targetDiff = SS.board_to_world(playerPos - target);
+			Vector3 tileDiff = SS.board_to_world(tilePos - playerPos);
+			if (SS.distance(tilePos, playerPos) == 1 && Mathf.Abs(Vector3.Angle(targetDiff, tileDiff)) < 59f)
+			{
+				if (mousePos == tilePos)
+				{
+					result.isValidMove = true;
+				}
+			}
+			else
+			{
+				result.isOutOfRange = true;
+			}
+			return result;
+		}
+		else
+		{
+			Debug.LogError("get_tile_mode called on recoil cannon with inputmode " + inputMode.ToString());
+			return result;
+		}
+	}
+
+	public override animation_t get_fire_animation (attack_t attack, unit_t master)
+	{
+		int frames = gameManager_t.stepFrames;
 		return new blasterAnimation_t(attack.target, frames);
 	}
 }

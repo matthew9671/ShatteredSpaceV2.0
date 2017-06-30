@@ -1,0 +1,56 @@
+Animation:
+HALT
+DO_NOTHING
+Each animation object has a delay and duration (useless?)
+Can control flow of time as a whole in gameManager_t
+
+MOVE-[after]->HALT-[after]->ATTACK-[short delay]->SPMOVE-[after]->HIT-[after]->HALT-[after]->MOVE-[after]->HALT
+
+Situation 1:
+    At start of turn everyone stands still. If nobody moves then this part is skipped.
+    Solution: Make the first step a special case: Don't add animation if movement is 0. Add HALT before the attack in the first step.
+
+Situation 2:
+    How to handle the situation when sometimes there is special movement but sometimes there's not?
+    Solution: Make special movement really fast, and slowdown global time when some units are doing non-zero special movement. The units without special movements also get an special movement animation
+
+Situation 3:
+    Bomb weapons fall exactly at end of turn.
+    Solution 1: Make the bomb fall animation two separate parts: the first part approaches its destination exponetially (i.e. shortens the distance by 1/r every second), the second part takes the bomb directly to its destination.
+
+    OR
+
+    Solution 2: Make the bomb animation ask the gameManager_t what the maximum time of all of the animation is, and the animation would set it self up accordingly
+
+Situation 4:
+    How to handle end of turn in planning and in the actual game?
+    Solution: Call the end_of_turn method in game_t and let it sort itself out :)
+
+Situation 5: 
+    Multiple collisions in single step vs. no movement? What about unsyncronized multiple collisions?
+    Solution: (Add HALT to the end of MOVE to syncronize every unit?) There shouldn't be any unsyncronized movements to begin with. 
+    Add methods in gameManager_t called time_warp(float deltatime) and reset_time()
+    When adding animations, make it so that the total animation time sums up to 1, and the animation calls time_warp to slow down time so that the user sees what is going on.
+    Specifically we need to look at several cases:
+        One unit nudges another unit away which nudges another unit away which ...
+        [1, 0, 0, 0] [0, 1, 0, 0] [0, 0, 1, 0] [0, 0, 0, 1]
+        Two units bump into each other
+        Two units move right at a corner
+
+Situation 6:
+    What about objects that gets created/destroyed? (Think about cluster bombs, orbit missiles and tracking mines)
+    Solution 1: For non-units like cluster bombs and orbit missiles, make them remember their master and insert their animations on the master's animation controller (with delay 0)?
+
+    OR
+
+    Solution 2: Generate new animation controllers for units and non-units alike. For every object in the board, if get_model != null, then the object deserves a animation controller. The list of animation controllers gets updated at the start of the planning phase for every turn.
+
+        But what about the objects that gets created at end of turn like the energy pieces when you get hit by the shock cannon?
+
+            Okay, then we do this. When something gets generated, the generator will call a function in gamemanager called add_animation_controller(object_t obj)
+            When an object with an animation controller gets removed, it calls remove_animation_controller on gameManager_t
+
+Situation 7:
+    Hit animations?
+    Solution: Assuming that movement animations are all syncronized, all hit animations happen at the end of movement. When the weapon fires a shot, the weapon should pass in the information such as the position when the shot is fired and the effect of the damage ("pushback", "shock", etc)
+    The virtual unit takes damage in resolve_step (or step_update) which is right after special movement. So adding the animation at that time is okay.

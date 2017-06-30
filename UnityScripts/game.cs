@@ -37,6 +37,7 @@ public class SS
 	public const int spMoveFrames = 15;
 	public const int movePause = 5;
 	public const int moveFrames = 20;
+	public const float spMoveFactor = 0.1f;
     public static readonly Vector2[] DIRECTIONS =
         {new Vector2(1, 0),
          new Vector2(-1, 0),
@@ -292,6 +293,12 @@ public class action_t
         this.attack = new attack_t(Vector2.zero);
         this.wpnId = -1;
     }
+
+	public bool is_default()
+	// Returns true if the action is "do nothing"
+	{
+		return (movement == Vector2.zero && spMovement == Vector2.zero && wpnId == -1);
+	}
 }
 
 // An abstract instance of a game of shattered space
@@ -399,6 +406,19 @@ public static class game_t
 		}
 	}
 
+	public static bool in_battle(board_t board)
+	// Returns true if any units on the board apart from the player(s) takes a non-default action
+	{
+		List<unit_t> units = board.get_units();
+		int unitCount = units.Count;
+		for (int i = 0; i < unitCount; i++)
+		{
+			action_t action = units[i].peek_action();
+			if (!(units[i] is player_t || action.is_default())) return true;
+		}
+		return false;
+	}
+
 	public static void execute_attack(board_t board)
 	// Execute only the attack part in one time step of the game
 	{
@@ -431,7 +451,7 @@ public static class game_t
 		// Add the movement animations
 		for (int i = 0; i < unitCount; i++)
 		{
-			units[i].add_movement_animation(startPos[i], spMovements[i]);
+			//units[i].add_movement_animation(startPos[i], spMovements[i], spFlag:true);
 		}
 	}
 
@@ -681,12 +701,55 @@ public class board_t
     const string damage_symbol = "*";
     const string other_symbol = "?";
 
-    public board_t(int mapId, int playerCount)
+	public board_t(int mapId=-1, int playerCount=1, int mapW=0, int mapH=0, bool[,] tileLayout=null, List<object_t> objs=null)
     {
         this.playerCount = playerCount;
         this.mapId = mapId;
-        this.init();
+		if (mapId == 0)
+		{
+        	this.init();
+		}
+		else
+		{
+			this.init_with_params(playerCount:playerCount, mapW:mapW, mapH:mapH, tileLayout:tileLayout, objs:objs);
+		}
     }
+
+	void init_with_params(int playerCount, int mapW, int mapH, bool[,] tileLayout, List<object_t> objs)
+	{
+		board = new List<object_t>[mapH,mapW];
+		objects = new List<object_t>();
+		pending = new List<damage_t>();
+
+		this.mapW = mapW;
+		this.mapH = mapH;
+
+		centerRow = mapH / 2;
+		centerCol = mapW / 2;
+		// Initialize the board
+		// Null is not a valid position (out of the map)
+		// Empty list represents an empty tile
+		for (int i = 0; i < mapH; i++)
+		{
+			for (int j = 0; j < mapW; j++)
+			{
+				if (tileLayout[i,j])
+				{
+					// We are in the board
+					board[i,j] = new List<object_t>();
+				}
+				else
+				{
+					// We are in empty space
+					board[i,j] = null;
+				}
+			}
+		} 
+		foreach(object_t obj in objs)
+		{
+			put_object(obj.get_pos(), obj);
+		}
+	}
 
     // Initialize map with mapId
     // We need to store the map data somewhere...
@@ -805,7 +868,7 @@ public class board_t
         int col = centerCol + (int)pos.x;
         // Return null if out of bounds
         if (row < 0 || col < 0 || row >= mapH || col >= mapW)
-        {
+		{
             return null;
         }
         else
@@ -814,6 +877,14 @@ public class board_t
         }
     }
 
+	public static Vector2 array_to_pos(int row, int col, int mapH, int mapW)
+	// Returns the correponding board position given the row and column number
+	{
+		int centerRow = mapH / 2;
+		int centerCol = mapW / 2;
+		return new Vector2(col - centerCol, centerRow - row);
+	}
+
     public bool put_object(Vector2 pos, object_t obj)
     // Put object on the board at pos. Returns false if pos is invalid.
     {
@@ -821,6 +892,7 @@ public class board_t
         // If pos is invalid or the object already exists
         if (tile == null || objects.Find(x => x == obj) != null)
         {
+			UnityEngine.Debug.Log("false");
             return false;
         }  
         else
@@ -1020,6 +1092,12 @@ public class board_t
         return objects.FindAll(x => x is unit_t).ConvertAll<unit_t>(x => x as unit_t);
     }
 
+	public List<object_t> get_objects()
+	//Returns a list of units ordered arbitrarily.
+	{
+		return objects;
+	}
+
     public void print_board()
     //Print out all the objects on the board for debugging purposes.
     {
@@ -1158,6 +1236,11 @@ public class object_t
     {
         this.position = pos;
     }
+
+	public virtual GameObject get_model()
+	{
+		return null;
+	}
 }
 
 // A unit object is one that has a health bar and can interact with
@@ -1209,6 +1292,7 @@ public class unit_t : object_t
     {
         int amount = dmg.amount;
         bool alive = take_damage(amount);
+		add_hit_animation(dmg);
         return alive;
     }
 
@@ -1264,29 +1348,32 @@ public class unit_t : object_t
 	// Methods related to visuals
 	// --------------------------
 
-	public virtual void add_movement_animation(Vector2 start, List<Vector2> vs)
+	public virtual void add_movement_animation(Vector2 start, List<Vector2> vs, bool spFlag = false)
     {
 		List<animation_t> animSequence = new List<animation_t>();
 		int n = vs.Count;
-		int frames = 20;
+		int frames = gameManager_t.stepFrames;
+		if (spFlag) frames = (int)(frames * SS.spMoveFactor);
 		for (int i = 0; i < n; i++) 
 		{
-			animSequence.Add (unitAnimation_t.pool.get_move_animation(vs[i] + start, frames));
+			animSequence.Add (unitAnimation_t.pool.get_move_animation(vs[i] + start, frames, spFlag));
 			start += vs[i];
 		}
 		gameManager_t.GM.send_animation(animSequence, objectId);
     }
+
+	public virtual void add_hit_animation(damage_t dmg)
+	{
+		List<animation_t> animSequence = new List<animation_t>();
+		animSequence.Add (unitAnimation_t.pool.get_hit_animation(dmg));
+		gameManager_t.GM.send_animation(animSequence, objectId);
+	}
 
 	public virtual void add_attack_animation(animation_t attackAnimation)
 	{
 		List<animation_t> animSequence = new List<animation_t>();
 		animSequence.Insert (0, attackAnimation);
 		gameManager_t.GM.send_animation(animSequence, objectId);
-	}
-
-	public virtual GameObject get_model()
-	{
-		return null;
 	}
 }
 
@@ -1370,14 +1457,15 @@ public class player_t : unit_t
     {
 		this.actions.Insert(0, action);
     }
-	public override void add_movement_animation(Vector2 start, List<Vector2> vs)
+	public override void add_movement_animation(Vector2 start, List<Vector2> vs, bool spFlag = false)
 	{
 		List<animation_t> animSequence = new List<animation_t>();
 		int n = vs.Count;
-		int frames = 20;
+		int frames = gameManager_t.stepFrames;
+		if (spFlag) frames = (int)(frames * SS.spMoveFactor);
 		for (int i = 0; i < n; i++) 
 		{
-			animSequence.Add (playerAnimation_t.pool.get_move_animation(vs[i] + start, frames));
+			animSequence.Add (playerAnimation_t.pool.get_move_animation(vs[i] + start, frames, spFlag));
 			start += vs[i];
 		}
 		gameManager_t.GM.send_animation(animSequence, objectId);

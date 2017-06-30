@@ -37,7 +37,7 @@ public class blasterAnimation_t : animation_t
 	public GameObject projectile;
 	Vector2 target;
 
-	public blasterAnimation_t(Vector2 target, int frames):base(null, null, 0, frames)
+	public blasterAnimation_t(Vector2 target, int frames):base("blaster shot", null, null, 0, frames)
 	{
 		this.target = target;
 	}

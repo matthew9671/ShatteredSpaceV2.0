@@ -1,0 +1,21 @@
+level_t:
+    int score;
+    int sceneId;
+    List<scene_t> scenes;
+    void load_next_scene(player_t player)
+    {
+        sceneId++;
+        scenes[sceneId].load_scene(player);
+    }
+scene_t:
+    int mapH;
+    int mapW;
+    bool[][] tileLayout;
+    Vector2 playerStartPos;
+    void load_scene(player_t player)
+    {
+        gameManager_t.GM.init_board();
+    }
+
+gameManager_t:
+    load_next_scene()

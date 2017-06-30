@@ -16,10 +16,14 @@ public class animController_t : MonoBehaviour {
 	public void reset()
 	{
 		index = 0;
+//		foreach(animation_t anim in animations)
+//		{
+//			anim.destroy();
+//		}
 		animations.Clear();
 	}
 
-	// Update is called once per frame
+	// Affected by timescale
 	void FixedUpdate () 
 	{
 		animCount = animations.Count;
@@ -41,6 +45,7 @@ public class animController_t : MonoBehaviour {
 				break;
 			}
 		}
+		if (animations.Count <= index) gameManager_t.GM.animation_finished();
 		// Update the duration counter on each playing animation
 		foreach (animation_t animation in animations)
 		{
@@ -74,7 +79,6 @@ public class animController_t : MonoBehaviour {
 	public void play()
 	{
 		//Debug.Log("Animation started!");
-		Time.timeScale = 1;
 		isPlaying = true;
 		foreach (animation_t animation in animations)
 		{
@@ -82,10 +86,10 @@ public class animController_t : MonoBehaviour {
 		}
 	}
 
+	// TODO: It should be play/pause/stop instead of play/stop
 	public void stop()
 	{
 		//Debug.Log("Animation stopped!");
-		/*Time.timeScale = 0;*/
 		isPlaying = false;
 		foreach (animation_t animation in animations)
 		{
@@ -123,6 +127,14 @@ public class animController_t : MonoBehaviour {
 		else
 		{
 			this.gameObject.SetActive(false);
+		}
+	}
+
+	public void print_animations()
+	{
+		foreach (animation_t anim in animations)
+		{
+			Debug.Log(anim.name);
 		}
 	}
 }
