@@ -49,7 +49,7 @@ public class UIAnimation : MonoBehaviour {
 
 	public void activate_movement_bar(GameObject movementBar, bool on)
 	{
-		Debug.Log("Activating attack node!");
+//		Debug.Log("Activating attack node!");
 		if (on)
 		{
 			// Play an animation that lights up the attack node

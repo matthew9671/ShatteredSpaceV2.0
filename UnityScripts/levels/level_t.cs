@@ -36,6 +36,11 @@ public class level_t
 		scenes[sceneId].load_scene();
 		return true;
 	} 
+
+	public void trigger_event(board_t board, Vector2 position)
+	{
+		scenes[sceneId].trigger_event(board, position);
+	}
 }
 
 public class scene_t
@@ -52,6 +57,8 @@ public class scene_t
 		objTypes.Add(typeof(player_t));
 		objTypes.Add(typeof(turret_t));
 		objTypes.Add(typeof(sceneExit_t));
+		objTypes.Add(typeof(blasterAddOn_t));
+		objTypes.Add(typeof(eventTrigger_t));
 		init_scene(mapInfo);
 	}
 
@@ -111,5 +118,21 @@ public class scene_t
 		gameManager_t.GM.init_board(mapW:mapW, mapH:mapH, tileLayout:tileLayout, objs:objs);
 		// Test only
 		gameManager_t.GM.set_mode(inputMode_t.FREE);
+	}
+
+	public virtual void trigger_event(board_t board, Vector2 pos)
+	{
+		Vector2[] spawnPosList = {new Vector2(3,0), new Vector2(-3,0), new Vector2(-3,3),
+			new Vector2(0,3), new Vector2(0,-3), new Vector2(3,-3)};
+		player_t player = board.get_players()[gameManager_t.GM.playerId];
+		foreach (Vector2 spawnPos in spawnPosList)
+		{
+			object_t enemy = new antibody_t(player as object_t);
+			board.put_object(spawnPos, enemy);
+			enemy.instantiate_on_physical_board();
+		}
+		Debug.Log("Event triggered at " + pos.ToString());
+		// Enter planning mode to prepare for the battle
+		gameManager_t.GM.init_planning();
 	}
 }

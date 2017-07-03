@@ -14,12 +14,13 @@ public class animController_t : MonoBehaviour {
 	public int animCount;
 
 	public void reset()
+	// Reset is called by init_planning
 	{
 		index = 0;
-//		foreach(animation_t anim in animations)
-//		{
-//			anim.destroy();
-//		}
+		foreach(animation_t anim in animations)
+		{
+			anim.destroy();
+		}
 		animations.Clear();
 	}
 
@@ -27,6 +28,7 @@ public class animController_t : MonoBehaviour {
 	void FixedUpdate () 
 	{
 		animCount = animations.Count;
+		// Play the animation(s) 
 		while (isPlaying && animations.Count > index) 
 		{
 			animation_t animation = animations[index];
@@ -36,8 +38,8 @@ public class animController_t : MonoBehaviour {
 			}
 			if (!animation.isPlaying)
 			{
+				// Every animation should only get played once
 				animation.play_animation(this.gameObject);
-				animation.isActive = true;
 			}
 			if (animation.delay > 0)
 			{
@@ -45,22 +47,29 @@ public class animController_t : MonoBehaviour {
 				break;
 			}
 		}
-		if (animations.Count <= index) gameManager_t.GM.animation_finished();
+		// Check if all animations finished playing
+		bool all_finished = true;
 		// Update the duration counter on each playing animation
 		foreach (animation_t animation in animations)
 		{
-			if (animation != null && animation.isPlaying)
+			if (animation.duration > 0) all_finished = false;
+			if (animation.isPlaying)
 			{
 				if (animation.duration == 0)
 				{
+					// Hopefully all the animations only gets stopped once
 					animation.stop_animation();
-					animation.isActive = false;
 				}
 				else
 				{
 					animation.duration -= 1;
 				}
 			}
+		}
+		if (animations.Count <= index && all_finished)
+		{
+			stop();
+			gameManager_t.GM.animation_finished();
 		}
 	}
 
@@ -72,7 +81,7 @@ public class animController_t : MonoBehaviour {
 		index = other.index;
 		foreach(animation_t anim in other.animations)
 		{
-			if (anim != null) animations.Add(anim.copy());
+			animations.Add(anim.copy());
 		}
 	}
 
@@ -80,21 +89,17 @@ public class animController_t : MonoBehaviour {
 	{
 		//Debug.Log("Animation started!");
 		isPlaying = true;
-		foreach (animation_t animation in animations)
-		{
-			if (animation.isActive) animation.play_animation(this.gameObject);
-		}
+//		foreach (animation_t animation in animations)
+//		{
+//			if (animation.isActive) animation.play_animation(this.gameObject);
+//		}
 	}
-
-	// TODO: It should be play/pause/stop instead of play/stop
+		
 	public void stop()
+	// Should only be called by HALT
 	{
 		//Debug.Log("Animation stopped!");
 		isPlaying = false;
-		foreach (animation_t animation in animations)
-		{
-			if (animation.isActive) animation.stop_animation();
-		}
 	}
 
 	public void pop_animation()

@@ -357,13 +357,13 @@ public static class game_t
 		execute_sp_movement(board);
 		resolve_step(board);
 		// Things that happens during a real execution of the game
-		List<unit_t> units = board.get_units();
-		int unitCount = units.Count;
-		for (int i = 0; i < unitCount; i++)
+		List<object_t> objs = board.get_objects();
+		int objCount = objs.Count;
+		for (int i = 0; i < objCount; i++)
 		{
 			List<animation_t> halt = new List<animation_t>();
 			halt.Add(animation_t.HALT);
-			gameManager_t.GM.send_animation(halt, units[i].objectId);
+			gameManager_t.GM.send_animation(halt, objs[i].objectId);
 		}
     }
 
@@ -376,7 +376,7 @@ public static class game_t
 		for (int i = 0; i < unitCount; i++)
 		{
 			// Get rid of the action that has been executed
-			units[i].pop_action();
+			units[i].pop_action(board);
 		}
 		// Update the board, deal with collisions
 		// This is also where all the objects gets updated
@@ -393,7 +393,7 @@ public static class game_t
 		for (int i = 0; i < unitCount; i++)
 		{
 			startPos.Add(units[i].get_pos());
-			action_t action = units[i].peek_action();
+			action_t action = units[i].peek_action(board);
 			vs[i] = action.movement;
 		}
 		// Move the units
@@ -413,7 +413,7 @@ public static class game_t
 		int unitCount = units.Count;
 		for (int i = 0; i < unitCount; i++)
 		{
-			action_t action = units[i].peek_action();
+			action_t action = units[i].peek_action(board);
 			if (!(units[i] is player_t || action.is_default())) return true;
 		}
 		return false;
@@ -426,7 +426,7 @@ public static class game_t
 		int unitCount = units.Count;
 		for (int i = 0; i < unitCount; i++)
 		{
-			action_t action = units[i].peek_action();
+			action_t action = units[i].peek_action(board);
 			animation_t attackAnimation = units[i].attack(action.attack, action.wpnId, board);
 			units [i].add_attack_animation (attackAnimation);
 		}
@@ -442,7 +442,7 @@ public static class game_t
 		for (int i = 0; i < unitCount; i++)
 		{
 			startPos.Add(units[i].get_pos());
-			action_t action = units[i].peek_action();
+			action_t action = units[i].peek_action(board);
 			spvs[i] = action.spMovement;
 		}
 		// Move the units
@@ -748,6 +748,7 @@ public class board_t
 		foreach(object_t obj in objs)
 		{
 			put_object(obj.get_pos(), obj);
+			obj.instantiate_on_physical_board();
 		}
 	}
 
@@ -1062,8 +1063,11 @@ public class board_t
                         // Call on_collision on both objects
                         // This could lead to problems due to 
                         // the order of execution
-                        tile[i].on_collision(tile[j]);
-                        tile[j].on_collision(tile[i]);
+						if (tile[i].exists && tile[j].exists)
+						{
+	                        tile[i].on_collision(this, tile[j]);
+	                        tile[j].on_collision(this, tile[i]);
+						}
                     }
                 }
             }
@@ -1170,7 +1174,7 @@ public class board_t
 public class object_t
 {
 	// A number that corresponds to a animation controller and gameobject
-	public int objectId;
+	public int objectId = -1;
     // The object does not render and interact with other objects 
     // if this is false
     public bool exists = true;
@@ -1188,7 +1192,13 @@ public class object_t
         this.solid = solid;
     }
 
-    public virtual void on_collision(object_t other){}
+	public void instantiate_on_physical_board()
+	{
+		this.objectId = gameManager_t.GM.instantiate_object(this);
+		UnityEngine.Debug.Log("Object instantiated with Id " + this.objectId.ToString());
+	}
+
+	public virtual void on_collision(board_t board, object_t other){}
     // Triggered when some other object collides with it 
     // (One of the two has to be solid). This may lead to inefficiency.
 
@@ -1317,16 +1327,16 @@ public class unit_t : object_t
         return hp;
     }
 
-	public virtual action_t peek_action()
+	public virtual action_t peek_action(board_t board)
 	// Returns an action from the action LIST of the unit without removing it
 	{
 		if (actions.Count == 0) return new action_t();
-		action_t result = pop_action ();
+		action_t result = pop_action (board);
 		actions.Insert (0, result);
 		return result;
 	}
 
-    public virtual action_t pop_action()
+    public virtual action_t pop_action(board_t board)
     // Removes and returns an action from the action LIST of the unit
     {
         System.Diagnostics.Debug.Assert(actions != null);
@@ -1362,6 +1372,13 @@ public class unit_t : object_t
 		gameManager_t.GM.send_animation(animSequence, objectId);
     }
 
+	public virtual void add_exit_animation()
+	{
+		List<animation_t> animSequence = new List<animation_t>();
+		animSequence.Add (unitAnimation_t.pool.get_exit_animation());
+		gameManager_t.GM.send_animation(animSequence, objectId);
+	}
+
 	public virtual void add_hit_animation(damage_t dmg)
 	{
 		List<animation_t> animSequence = new List<animation_t>();
@@ -1396,7 +1413,7 @@ public class player_t : unit_t
     {
         // Temporary
         // TODO: Change this
-        this.weapons.Add(new blaster_t());
+//        this.weapons.Add(new blaster_t());
     }
 
     void refresh_weapons()
@@ -1581,7 +1598,7 @@ public class damage_t : object_t
         this.delay = delay;
     }
 
-    public override void on_collision(object_t other)
+	public override void on_collision(board_t board, object_t other)
     // Calls get_hit on the other object 
     {
         if (other is unit_t)

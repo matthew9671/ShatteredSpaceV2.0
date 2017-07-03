@@ -6,16 +6,18 @@ public class blasterFX : MonoBehaviour {
 
 	Vector2 toPosition;
 	int frames;
-	public bool isPlaying = false;
 
 	public IEnumerator move () {
 		Vector3 start = this.transform.position;
 		Vector3 end = SS.board_to_world(toPosition);
 		for (int i = 1; i < frames + 1; i++)
 		{
+//			yield return new WaitUntil(() => this.gameObject.activeSelf);
 			this.transform.position = Vector3.Lerp(start, end, (float)i / frames);
 			yield return new WaitForFixedUpdate();
+//			yield return new WaitUntil(() => this.gameObject.activeSelf);
 		}
+		this.gameObject.SetActive(false);
 	}
 
 	public void play(Vector2 target, int f)
@@ -44,6 +46,7 @@ public class blasterAnimation_t : animation_t
 
 	public override void play_animation(GameObject obj)
 	{
+		Debug.Log("Playing blaster shot animation");
 		if (projectile == null)
 		{
 			projectile = GameObject.Instantiate(weaponAnimation_t.pool.blasterProjectile, 
@@ -56,10 +59,6 @@ public class blasterAnimation_t : animation_t
 	{
 		//UnityEngine.Debug.Log("Blaster animation stopped!");
 		if (projectile != null) projectile.GetComponent<blasterFX>().stop();
-	}
-
-	public override void destroy()
-	{
 		GameObject.Destroy (projectile);
 	}
 
@@ -74,7 +73,9 @@ public class blasterAnimation_t : animation_t
 		{
 			result.projectile = GameObject.Instantiate(projectile) as GameObject;
 		}
-		result.isActive = this.isActive;
+		result.isPlaying = this.isPlaying;
+		result.projectile.GetComponent<blasterFX>().stop();
+		result.projectile.GetComponent<blasterFX>().play(target, this.duration);
 		return result as animation_t;
 	}
 

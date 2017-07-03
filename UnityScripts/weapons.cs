@@ -348,10 +348,10 @@ public class blastWave_t : damage_t
 		this.direction = direction;
 	}
 
-	public override void on_collision(object_t other)
+	public override void on_collision(board_t board, object_t other)
 	// Calls get_hit on the other object 
 	{
-		base.on_collision(other);
+		base.on_collision(board, other);
 		if (other is player_t)
 		{
 			player_t player = other as player_t;

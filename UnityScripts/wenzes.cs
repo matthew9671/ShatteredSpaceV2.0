@@ -10,7 +10,7 @@ public class wenzeTest
 {
     public static void test_weapons()
     {
-        test_shock_cannon();
+        //test_shock_cannon();
     }
     
     public static void test_shock_cannon()
@@ -117,7 +117,7 @@ public class shockDamage_t : damage_t
                     new Vector2(0,-1), new Vector2(0,-2), new Vector2(1,-1),
                     new Vector2(2,-1), new Vector2(1,-2), new Vector2(2,-2)};
 
-    public override void on_collision(object_t other){
+	public override void on_collision(board_t board, object_t other){
         if (other is player_t && player == null)
         {
             player = other as player_t;

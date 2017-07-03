@@ -100,8 +100,6 @@ public class animation_t
 	public int duration;
 	public string name;
 	public bool isPlaying;
-	// If an animation is active, then it plays when time moves forward and stops when time stops 
-	public bool isActive;
 
 	public static animation_t DO_NOTHING = new animation_t("Do nothing", delegate(GameObject obj){}, delegate(){}, 0, 0);
 	public static animation_t HALT = new animation_t("Halt", delegate(GameObject obj)
@@ -118,7 +116,6 @@ public class animation_t
 		this.delay = delay;
 		this.duration = duration;
 		isPlaying = false;
-		isActive = false;
 	}
 
 	public virtual void play_animation(GameObject obj)
@@ -148,7 +145,7 @@ public class animation_t
 	public virtual animation_t copy()
 	{
 		animation_t result = new animation_t(name, play, stop, delay, duration);
-		result.isActive = isActive;
+		result.isPlaying = this.isPlaying;
 		return result;
 	}
 
@@ -295,7 +292,7 @@ public class gameManager_t : MonoBehaviour
 {
 	// Black magic learned from
 	//http://answers.unity3d.com/questions/323195/how-can-i-have-a-static-class-i-can-access-from-an.html
-	public static gameManager_t GM;
+	public static gameManager_t GM = null;
 
 	// -------------------
 	// Important constants
@@ -345,7 +342,8 @@ public class gameManager_t : MonoBehaviour
 	public int testNum = 42;
 
 	// Animation stuff
-	public Stack<List<animController_t>> animControllers = new Stack<List<animController_t>>();
+	List<animController_t> animControllers = new List<animController_t>();
+	Stack<List<animController_t>> animControllerStack = new Stack<List<animController_t>>();
 	public int haltedControllers = 0;
 	public const float timeScale = 5f;
 	public const int stepFrames = 20;
@@ -360,6 +358,8 @@ public class gameManager_t : MonoBehaviour
 	// Level stuff
 	public TextAsset[] levelInfos;
 	level_t currLevel;
+	// The special, scene-level things that happen at end of turn
+	public event Action endOfTurnActions;
 
 	// Black magic
 	void Awake()
@@ -382,6 +382,8 @@ public class gameManager_t : MonoBehaviour
     public void init_game()
     // Called when the game starts
     {
+		animControllerStack.Push(animControllers);
+		boardHolder = new GameObject ("Board").transform;
 		load_level(0);
 	}
 
@@ -389,7 +391,9 @@ public class gameManager_t : MonoBehaviour
 	{
 		tiles = null;
 		stop_animation();
+		animControllerStack.Clear();
 		animControllers.Clear();
+		animControllerStack.Push(animControllers);
 	}
 
 	public void init_board(int mapW, int mapH, bool[,] tileLayout, List<object_t> objs)
@@ -397,8 +401,6 @@ public class gameManager_t : MonoBehaviour
 	{
 		// Init the virtual board
 		board = new board_t(mapW:mapW, mapH:mapH, tileLayout:tileLayout, objs:objs);
-		// Init the physical board
-		if (boardHolder == null) boardHolder = new GameObject ("Board").transform;
         // Generate the physical board
 		tiles = new tile_t[board.mapH, board.mapW];
 		for (int row = 0; row < board.mapH; row++) {
@@ -416,26 +418,6 @@ public class gameManager_t : MonoBehaviour
 				}
 			}
 		}
-		// TODO: Change this to generate all units
-        // Generate objects on the physical board
-		objs = board.get_objects();
-		List<animController_t> animCtrlList = new List<animController_t> ();
-		foreach (object_t obj in objs)
-        {
-            GameObject instance = GameObject.Instantiate 
-				(obj.get_model(), SS.board_to_world(obj.get_pos()), Quaternion.identity) as GameObject;
-			if (obj is unit_t)
-			// Currently only units can have animations
-			{
-				animController_t aCtrl = instance.AddComponent<animController_t> ();
-				obj.objectId = animCtrlList.Count;
-				aCtrl.objectId = animCtrlList.Count;
-				animCtrlList.Add (aCtrl);
-
-			}
-			instance.transform.SetParent (boardHolder);
-		}
-		animControllers.Push (animCtrlList);
 		// Initialize the UI elements
 		outOfBoard = new Vector2(board.centerCol + 1, board.centerRow + 1);
 		tempPlayer = board.get_players()[playerId];
@@ -459,8 +441,8 @@ public class gameManager_t : MonoBehaviour
     {
 		Debug.Log("Init planning!");
 		// For testing
-		if (!tempPlayer.weapons.Exists(x => x is shockCannon_t)) tempPlayer.build_weapon (new shockCannon_t ());
-		if (!tempPlayer.weapons.Exists(x => x is recoilCannon_t)) tempPlayer.build_weapon (new recoilCannon_t ());
+//		if (!tempPlayer.weapons.Exists(x => x is shockCannon_t)) tempPlayer.build_weapon (new shockCannon_t ());
+//		if (!tempPlayer.weapons.Exists(x => x is recoilCannon_t)) tempPlayer.build_weapon (new recoilCannon_t ());
 		init_UI();
 		tempBoards = new Stack<board_t>();
         // Get the copy of the board
@@ -470,7 +452,7 @@ public class gameManager_t : MonoBehaviour
 		actions.Push(new action_t());
 		stepNumber = 0;
 		mousePos = outOfBoard;
-		foreach (animController_t anim in animControllers.Peek())
+		foreach (animController_t anim in animControllerStack.Peek())
 		{
 			anim.reset();
 		}
@@ -478,6 +460,7 @@ public class gameManager_t : MonoBehaviour
 		inputMode = inputMode_t.WEAPON;
 		// Shift the camera to look cool
 		StartCoroutine(rotate_camera(Quaternion.identity));
+		update_tiles();
     }
 
 	//-----------------
@@ -900,9 +883,9 @@ public class gameManager_t : MonoBehaviour
 		input.Add(actionList);
 		input.Add(new List<action_t>());
 		stop_animation();
-		game_t.execute_turn(board, input);
+		game_t.execute_turn(get_board(), input);
 		StartCoroutine(rotate_camera(Quaternion.Euler(-45f, 0f, 0f)));
-		//playButton.interactable = true;
+//		playButton.interactable = true;
 		play_animation();
 		start_time();
 	}
@@ -914,11 +897,11 @@ public class gameManager_t : MonoBehaviour
 		// Copy the virtual board
 		board_t newTempBoard = objectCopier.clone (get_board ());
 		// As well as the physical one
-		List<animController_t> animCtrlList = animControllers.Peek();
+		List<animController_t> animCtrlList = animControllerStack.Peek();
 		List<animController_t> newAnimCtrlList = new List<animController_t> ();
 		for (int i = 0; i < animCtrlList.Count; i++) 
 		{
-			GameObject copy = GameObject.Instantiate (animCtrlList [i].gameObject) as GameObject;
+			GameObject copy = GameObject.Instantiate (animCtrlList [i].gameObject, boardHolder) as GameObject;
 			animController_t aCtrl = copy.GetComponent<animController_t>();
 			// Copy every animation over
 			// For some animations with extra game objects, those game objects will also be copied
@@ -927,7 +910,7 @@ public class gameManager_t : MonoBehaviour
 			animCtrlList[i].set_active (false);
 		}
 		// Add the new list of the animation controllers
-		animControllers.Push (newAnimCtrlList);
+		animControllerStack.Push (newAnimCtrlList);
 		tempPlayer = newTempBoard.get_players () [playerId];
 		tempBoards.Push (newTempBoard);
 	}
@@ -939,11 +922,11 @@ public class gameManager_t : MonoBehaviour
 		Debug.Log("Revert_to_prev_state!");
 		tempBoards.Pop ();
 		tempPlayer = get_board ().get_players () [playerId];
-		foreach (animController_t animCtrl in animControllers.Pop())
+		foreach (animController_t animCtrl in animControllerStack.Pop())
 		{
 			animCtrl.destroy();
 		}
-		foreach (animController_t animCtrl in animControllers.Peek())
+		foreach (animController_t animCtrl in animControllerStack.Peek())
 		{
 			animCtrl.set_active (true);
 		}
@@ -965,7 +948,7 @@ public class gameManager_t : MonoBehaviour
 
 	void stop_animation()
 	{
-		foreach(animController_t aCtrl in animControllers.Peek())
+		foreach(animController_t aCtrl in animControllerStack.Peek())
 		{
 			aCtrl.stop();
 		}
@@ -973,8 +956,7 @@ public class gameManager_t : MonoBehaviour
 
 	public void play_animation()
 	{
-		haltedControllers = 0;
-		foreach(animController_t aCtrl in animControllers.Peek())
+		foreach(animController_t aCtrl in animControllerStack.Peek())
 		{
 			Debug.Assert(aCtrl.gameObject != null);
 			aCtrl.play();
@@ -982,13 +964,36 @@ public class gameManager_t : MonoBehaviour
 		playButton.interactable = false;
 	}
 
+	public int instantiate_object(object_t obj)
+	// Called by the object_t whenever an object_t is spawned
+	// Give the virtual object a physical presence
+	// Returns the corresponding objectId
+	// If the objectId doesn't have any models, then it doesn't have animation and objectId is -1
+	{
+		if (obj.get_model() == null) return -1;
+		animControllers = animControllerStack.Peek();
+		// Generate objects on the physical board
+		GameObject instance = GameObject.Instantiate 
+			(obj.get_model(), SS.board_to_world(obj.get_pos()), Quaternion.identity, boardHolder) as GameObject;
+		animController_t aCtrl = instance.AddComponent<animController_t> ();
+		aCtrl.objectId = animControllers.Count;
+		animControllers.Add (aCtrl);
+		return animControllers.Count - 1;
+	}
+
+	public void deinstantiate_object(object_t obj)
+	{
+		//???
+	}
+
 	public void animation_halted()
 	// Called exclusively by HALT animations
 	{
 		haltedControllers += 1;
-		if (haltedControllers == animControllers.Peek().Count)
+		if (haltedControllers == animControllerStack.Peek().Count)
 			// All animation controllers are done with their animations for the step
 		{
+			haltedControllers = 0;
 			// Start the animations for the next step
 			play_animation();
 		}
@@ -999,12 +1004,17 @@ public class gameManager_t : MonoBehaviour
 	{
 		// See if turn has ended
 		bool turnEnded = true;
-		foreach (animController_t anim in animControllers.Peek())
+		foreach (animController_t anim in animControllerStack.Peek())
 		{
 			if (anim.index < anim.animations.Count)
 			{
 				turnEnded = false;
 			}
+		}
+		if (turnEnded)
+		{
+			if (endOfTurnActions != null) endOfTurnActions();
+			endOfTurnActions = null;
 		}
 		if (inputMode == inputMode_t.IN_TURN && turnEnded)
 		{
@@ -1014,7 +1024,8 @@ public class gameManager_t : MonoBehaviour
 
 	public void send_animation(List<animation_t> animSequence, int objectId)
 	{
-		animControllers.Peek()[objectId].animations.AddRange(animSequence);
+		if (objectId == -1) return;
+		animControllerStack.Peek()[objectId].animations.AddRange(animSequence);
 	}
 
 	public void warp_time(float scale)
@@ -1078,8 +1089,21 @@ public class gameManager_t : MonoBehaviour
 
 	public void next_scene()
 	{
-		reset_scene();
-		currLevel.load_next_scene();
+		if (inputMode == inputMode_t.IN_TURN)
+		{
+			reset_scene();
+			currLevel.load_next_scene();
+		}
+	}
+		
+	public void trigger_event(board_t board,Vector2 position)
+	// Called by eventTrigger_t
+	// Position is the position of the eventTrigger object
+	{
+		if (inputMode == inputMode_t.FREE)
+		{
+			currLevel.trigger_event(board, position);
+		}
 	}
 
 	//--------------
@@ -1133,5 +1157,15 @@ public class gameManager_t : MonoBehaviour
 	{
 		mousePos = pos;
 		update_tiles();
+	}
+
+	//--------------------
+	// Debugging functions
+	//--------------------
+
+	public void debug_next_scene()
+	{
+		reset_scene();
+		currLevel.load_next_scene();
 	}
 }
